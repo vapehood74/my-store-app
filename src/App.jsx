@@ -18,7 +18,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="p-4 bg-white shadow flex justify-between items-center">
-        <h1 className="font-bold text-lg">ร้านค้าออนไลน์</h1>
+        <h1 className="font-bold text-lg">Bossystock</h1>
         <div className="flex gap-2">
           {session && <button onClick={handleLogout} className="bg-red-500 text-white px-3 py-1 rounded">ออก</button>}
           <button onClick={() => setShowAdmin(!showAdmin)} className="bg-gray-800 text-white px-3 py-1 rounded">
