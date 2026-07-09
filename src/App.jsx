@@ -58,7 +58,6 @@ function MainShopSystem({ showAdmin }) {
     setSales(s || []);
   }
 
-  // ซ่อนหมวดที่ไม่มีสินค้า
   const activeCategories = ['ทั้งหมด', ...categories.filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))];
 
   async function handleAddProduct(e) {
@@ -81,8 +80,9 @@ function MainShopSystem({ showAdmin }) {
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
       await supabase.from('products').update({ stock_quantity: p.stock_quantity - 1 }).eq('id', p.id);
+      // เปลี่ยนจาก created_at เป็น sold_at ให้ตรงกับฐานข้อมูล
       await supabase.from('sales_history').insert({ 
-        product_id: p.id, product_name: p.name, sale_price: p.price, cost_price: p.cost, created_at: new Date() 
+        product_id: p.id, product_name: p.name, sale_price: p.price, cost_price: p.cost, sold_at: new Date().toISOString() 
       });
       fetchData();
     }
@@ -91,10 +91,10 @@ function MainShopSystem({ showAdmin }) {
   const calculateSales = (days) => {
     const now = new Date();
     return sales.filter(s => {
-      const saleDate = new Date(s.created_at);
+      const saleDate = new Date(s.sold_at); // ดึงจาก sold_at
       const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
       return diffDays <= days;
-    }).reduce((sum, item) => sum + (item.sale_price || 0), 0);
+    }).reduce((sum, item) => sum + (Number(item.sale_price) || 0), 0);
   };
 
   return (
