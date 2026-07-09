@@ -155,24 +155,50 @@ function MainShopSystem({ showAdmin }) {
             </div>
           )}
 
-          {activeTab === 'stock' && (
-            <div className="bg-white p-6 shadow">
-              {products.map(p => (
-                <div key={p.id} className="flex justify-between border-b p-3 items-center">
-                  <div>
-                    <p className="font-bold">{p.name}</p>
-                    <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <input type="number" placeholder="เติม" className="w-16 border p-1 rounded" value={restockAmounts[p.id] || ''} onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} />
-                    <button onClick={() => handleRestock(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">เติม</button>
-                    <button onClick={() => handleSell(p)} className="bg-orange-500 text-white px-3 py-1 rounded text-sm">ขาย</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+         {activeTab === 'stock' && (
+  <div className="space-y-6">
+    {categories.map((category) => {
+      // กรองสินค้าที่อยู่ในหมวดหมู่นี้
+      const productsInCategory = products.filter(p => p.category === category);
+      
+      // ถ้าหมวดหมู่นี้ไม่มีสินค้า ไม่ต้องแสดงหัวข้อ
+      if (productsInCategory.length === 0) return null;
 
+      return (
+        <div key={category} className="bg-white p-4 shadow rounded">
+          <h3 className="font-bold text-lg mb-3 border-b pb-2 text-blue-600">{category}</h3>
+          {productsInCategory.map(p => (
+            <div key={p.id} className="flex justify-between border-b p-3 items-center hover:bg-gray-50">
+              <div>
+                <p className="font-medium">{p.name}</p>
+                <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
+              </div>
+              <div className="flex gap-2 items-center">
+                <input 
+                  type="number" 
+                  placeholder="เติม" 
+                  className="w-16 border p-1 rounded text-center" 
+                  value={restockAmounts[p.id] || ''} 
+                  onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} 
+                />
+                <button 
+                  onClick={() => handleRestock(p)} 
+                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                  เติม
+                </button>
+                <button 
+                  onClick={() => handleSell(p)} 
+                  className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600">
+                  ขาย
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    })}
+  </div>
+)}
           {activeTab === 'add' && (
             <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3">
               <input placeholder="ชื่อสินค้า" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
