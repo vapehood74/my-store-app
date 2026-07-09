@@ -58,6 +58,25 @@ function MainShopSystem({ showAdmin }) {
     setSales(s || []);
   }
 
+  // ฟังก์ชันคำนวณยอดขายและกำไร
+  const calculateStats = (days) => {
+    const now = new Date();
+    let totalSales = 0;
+    let totalProfit = 0;
+    
+    sales.forEach(s => {
+      const saleDate = new Date(s.sold_at);
+      const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
+      if (diffDays <= days) {
+        const sPrice = Number(s.sale_price) || 0;
+        const sCost = Number(s.cost_price) || 0;
+        totalSales += sPrice;
+        totalProfit += (sPrice - sCost);
+      }
+    });
+    return { sales: totalSales, profit: totalProfit };
+  };
+
   const activeCategories = ['ทั้งหมด', ...categories.filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))];
 
   async function handleAddProduct(e) {
@@ -79,42 +98,18 @@ function MainShopSystem({ showAdmin }) {
 
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
-      // 1. ตัดสต็อก
       await supabase.from('products').update({ stock_quantity: Number(p.stock_quantity) - 1 }).eq('id', p.id);
-      
-      // 2. บันทึกยอดขาย (ไม่ส่ง total_profit เพราะฐานข้อมูลคำนวณเอง)
       const { error } = await supabase.from('sales_history').insert({ 
-        product_id: p.id, 
-        product_name: p.name, 
-        quantity: 1,
-        sale_price: Number(p.price), 
-        cost_price: Number(p.cost), 
-        sold_at: new Date().toISOString() 
+        product_id: p.id, product_name: p.name, quantity: 1,
+        sale_price: Number(p.price), cost_price: Number(p.cost), sold_at: new Date().toISOString() 
       });
-
-      if (error) {
-        console.error("Error inserting sale:", error);
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
-      } else {
-        fetchData();
-      }
+      if (!error) fetchData();
     } else {
       alert("สินค้าหมด!");
     }
   }
 
-  const calculateSales = (days) => {
-    const now = new Date();
-    return sales.filter(s => {
-      if (!s.sold_at) return false;
-      const saleDate = new Date(s.sold_at);
-      const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
-      return diffDays <= days;
-    }).reduce((sum, item) => sum + (Number(item.sale_price) || 0), 0);
-  };
-
   return (
-    // ... ส่วนแสดงผลคงเดิม ...
     <div className="p-6">
       {!showAdmin ? (
         <div>
@@ -133,6 +128,7 @@ function MainShopSystem({ showAdmin }) {
                 <p className="font-bold">{p.name}</p>
                 <p className="text-xs text-gray-500">{p.category}</p>
                 <p>ราคา {p.price} บาท</p>
+                <button onClick={() => handleSell(p)} className="mt-2 w-full bg-green-600 text-white py-1 rounded">ขาย</button>
               </div>
             ))}
           </div>
@@ -148,10 +144,29 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white p-4 shadow rounded"><h3>ยอดวันนี้</h3><p className="text-2xl font-bold">{calculateSales(1)}</p></div>
-              <div className="bg-white p-4 shadow rounded"><h3>ยอด 7 วัน</h3><p className="text-2xl font-bold">{calculateSales(7)}</p></div>
-              <div className="bg-white p-4 shadow rounded"><h3>ยอด 30 วัน</h3><p className="text-2xl font-bold">{calculateSales(30)}</p></div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 7, 30].map(d => {
+                  const stats = calculateStats(d);
+                  return (
+                    <div key={d} className="bg-white p-4 shadow rounded">
+                      <h3 className="text-gray-500 text-sm">ยอด {d === 1 ? 'วันนี้' : `${d} วัน`}</h3>
+                      <p className="text-xl font-bold">{stats.sales}</p>
+                      <p className="text-sm text-green-600">กำไร: {stats.profit}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="bg-white p-4 shadow rounded">
+                <h3 className="font-bold mb-3">ประวัติการขายล่าสุด</h3>
+                {[...sales].reverse().slice(0, 10).map((s, i) => (
+                  <div key={i} className="flex justify-between border-b py-2 text-sm">
+                    <span>{s.product_name}</span>
+                    <span className="text-gray-400">{new Date(s.sold_at).toLocaleDateString('th-TH')}</span>
+                    <span className="font-bold">{s.sale_price}บ.</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -166,7 +181,6 @@ function MainShopSystem({ showAdmin }) {
                   <div className="flex gap-2 items-center">
                     <input type="number" placeholder="เติม" className="w-16 border p-1 rounded" value={restockAmounts[p.id] || ''} onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} />
                     <button onClick={() => handleRestock(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">เติม</button>
-                    <button onClick={() => handleSell(p)} className="bg-orange-500 text-white px-3 py-1 rounded text-sm">ขาย</button>
                   </div>
                 </div>
               ))}
