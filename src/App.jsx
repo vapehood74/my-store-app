@@ -77,41 +77,18 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  // ปรับปรุงฟังก์ชันการขายให้ส่งข้อมูลครบตามโครงสร้างฐานข้อมูล
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
       // 1. ตัดสต็อก
       await supabase.from('products').update({ stock_quantity: Number(p.stock_quantity) - 1 }).eq('id', p.id);
       
-      // 2. บันทึกยอดขาย (ลบ total_profit ออก เพราะฐานข้อมูลจัดการให้เอง)
+      // 2. บันทึกยอดขาย (ไม่ส่ง total_profit เพราะฐานข้อมูลคำนวณเอง)
       const { error } = await supabase.from('sales_history').insert({ 
         product_id: p.id, 
         product_name: p.name, 
         quantity: 1,
         sale_price: Number(p.price), 
         cost_price: Number(p.cost), 
-        // total_profit ถูกนำออกไปแล้วตามคำแนะนำ
-        sold_at: new Date().toISOString() 
-      });
-
-      if (error) {
-        console.error("Error inserting sale:", error);
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
-      } else {
-        fetchData();
-      }
-    } else {
-      alert("สินค้าหมด!");
-    }
-  }
-      // 2. บันทึกยอดขายให้ครบทุกช่อง
-      const { error } = await supabase.from('sales_history').insert({ 
-        product_id: p.id, 
-        product_name: p.name, 
-        quantity: 1,
-        sale_price: Number(p.price), 
-        cost_price: Number(p.cost), 
-        total_profit: Number(p.price) - Number(p.cost),
         sold_at: new Date().toISOString() 
       });
 
@@ -137,6 +114,7 @@ function MainShopSystem({ showAdmin }) {
   };
 
   return (
+    // ... ส่วนแสดงผลคงเดิม ...
     <div className="p-6">
       {!showAdmin ? (
         <div>
