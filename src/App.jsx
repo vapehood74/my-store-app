@@ -77,21 +77,39 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
+  // ปรับปรุงฟังก์ชันการขายให้ส่งข้อมูลครบตามโครงสร้างฐานข้อมูล
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
-      await supabase.from('products').update({ stock_quantity: p.stock_quantity - 1 }).eq('id', p.id);
-      // เปลี่ยนจาก created_at เป็น sold_at ให้ตรงกับฐานข้อมูล
-      await supabase.from('sales_history').insert({ 
-        product_id: p.id, product_name: p.name, sale_price: p.price, cost_price: p.cost, sold_at: new Date().toISOString() 
+      // 1. ตัดสต็อก
+      await supabase.from('products').update({ stock_quantity: Number(p.stock_quantity) - 1 }).eq('id', p.id);
+      
+      // 2. บันทึกยอดขายให้ครบทุกช่อง
+      const { error } = await supabase.from('sales_history').insert({ 
+        product_id: p.id, 
+        product_name: p.name, 
+        quantity: 1,
+        sale_price: Number(p.price), 
+        cost_price: Number(p.cost), 
+        total_profit: Number(p.price) - Number(p.cost),
+        sold_at: new Date().toISOString() 
       });
-      fetchData();
+
+      if (error) {
+        console.error("Error inserting sale:", error);
+        alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
+      } else {
+        fetchData();
+      }
+    } else {
+      alert("สินค้าหมด!");
     }
   }
 
   const calculateSales = (days) => {
     const now = new Date();
     return sales.filter(s => {
-      const saleDate = new Date(s.sold_at); // ดึงจาก sold_at
+      if (!s.sold_at) return false;
+      const saleDate = new Date(s.sold_at);
       const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
       return diffDays <= days;
     }).reduce((sum, item) => sum + (Number(item.sale_price) || 0), 0);
