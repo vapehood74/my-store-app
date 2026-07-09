@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import Login from './Login'; 
+import Login from './Login';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -12,7 +12,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.reload(); 
+    window.location.reload();
   };
 
   return (
@@ -40,10 +40,14 @@ function MainShopSystem({ showAdmin }) {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '' });
+  const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด');
   
-  // State สำหรับเก็บจำนวนที่จะเติมสต็อกแยกตามรายสินค้า
+  const [newProduct, setNewProduct] = useState({ 
+    name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' 
+  });
   const [restockAmounts, setRestockAmounts] = useState({});
+
+  const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Infy 20k", "M switch 15k","Esko bar 20k","Lambo 12k"];
 
   useEffect(() => { fetchData(); }, []);
 
@@ -54,36 +58,31 @@ function MainShopSystem({ showAdmin }) {
     setSales(s || []);
   }
 
-  // ระบบเพิ่มสินค้าใหม่
+  // ซ่อนหมวดที่ไม่มีสินค้า
+  const activeCategories = ['ทั้งหมด', ...categories.filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))];
+
   async function handleAddProduct(e) {
     e.preventDefault();
     await supabase.from('products').insert([newProduct]);
     alert("เพิ่มสินค้าใหม่สำเร็จ!");
-    setNewProduct({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '' });
+    setNewProduct({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
     fetchData();
   }
 
-  // ระบบเติมสต็อกสินค้าเดิม
   async function handleRestock(p) {
     const amount = parseInt(restockAmounts[p.id] || 0);
     if (amount > 0) {
-      await supabase.from('products')
-        .update({ stock_quantity: Number(p.stock_quantity) + amount })
-        .eq('id', p.id);
-      
-      setRestockAmounts({...restockAmounts, [p.id]: ''}); // ล้างค่าในช่องกรอก
-      alert(`เติมสต็อก ${p.name} เรียบร้อยแล้ว`);
+      await supabase.from('products').update({ stock_quantity: Number(p.stock_quantity) + amount }).eq('id', p.id);
+      setRestockAmounts({...restockAmounts, [p.id]: ''});
       fetchData();
     }
   }
 
-  // ระบบตัดสต็อก
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
       await supabase.from('products').update({ stock_quantity: p.stock_quantity - 1 }).eq('id', p.id);
       await supabase.from('sales_history').insert({ 
-        product_id: p.id, product_name: p.name, sale_price: p.price, 
-        cost_price: p.cost, created_at: new Date() 
+        product_id: p.id, product_name: p.name, sale_price: p.price, cost_price: p.cost, created_at: new Date() 
       });
       fetchData();
     }
@@ -101,31 +100,42 @@ function MainShopSystem({ showAdmin }) {
   return (
     <div className="p-6">
       {!showAdmin ? (
-        <div className="grid grid-cols-2 gap-4">
-          {products.filter(p => p.stock_quantity > 0).map(p => (
-            <div key={p.id} className="bg-white p-4 rounded shadow border">
-              <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
-              <p className="font-bold">{p.name}</p>
-              <p>ราคา {p.price} บาท</p>
-            </div>
-          ))}
+        <div>
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {activeCategories.map(cat => (
+              <button key={cat} onClick={() => setSelectedCategory(cat)} 
+                className={`px-4 py-1 rounded-full whitespace-nowrap ${selectedCategory === cat ? 'bg-black text-white' : 'bg-gray-200'}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {products.filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory)).map(p => (
+              <div key={p.id} className="bg-white p-4 rounded shadow border">
+                <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
+                <p className="font-bold">{p.name}</p>
+                <p className="text-xs text-gray-500">{p.category}</p>
+                <p>ราคา {p.price} บาท</p>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="flex gap-2">
             {['dashboard', 'stock', 'add'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : 'เพิ่มสินค้าใหม่'}
+                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : 'เพิ่มสินค้า'}
               </button>
             ))}
           </div>
 
           {activeTab === 'dashboard' && (
-             <div className="grid grid-cols-3 gap-4">
-               <div className="bg-white p-4 shadow rounded"><h3>ยอดวันนี้</h3><p className="text-2xl font-bold">{calculateSales(1)}</p></div>
-               <div className="bg-white p-4 shadow rounded"><h3>ยอด 7 วัน</h3><p className="text-2xl font-bold">{calculateSales(7)}</p></div>
-               <div className="bg-white p-4 shadow rounded"><h3>ยอด 30 วัน</h3><p className="text-2xl font-bold">{calculateSales(30)}</p></div>
-             </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white p-4 shadow rounded"><h3>ยอดวันนี้</h3><p className="text-2xl font-bold">{calculateSales(1)}</p></div>
+              <div className="bg-white p-4 shadow rounded"><h3>ยอด 7 วัน</h3><p className="text-2xl font-bold">{calculateSales(7)}</p></div>
+              <div className="bg-white p-4 shadow rounded"><h3>ยอด 30 วัน</h3><p className="text-2xl font-bold">{calculateSales(30)}</p></div>
+            </div>
           )}
 
           {activeTab === 'stock' && (
@@ -137,13 +147,7 @@ function MainShopSystem({ showAdmin }) {
                     <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <input 
-                      type="number" 
-                      placeholder="จำนวนเติม" 
-                      className="w-20 border p-1 rounded"
-                      value={restockAmounts[p.id] || ''}
-                      onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})}
-                    />
+                    <input type="number" placeholder="เติม" className="w-16 border p-1 rounded" value={restockAmounts[p.id] || ''} onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} />
                     <button onClick={() => handleRestock(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">เติม</button>
                     <button onClick={() => handleSell(p)} className="bg-orange-500 text-white px-3 py-1 rounded text-sm">ขาย</button>
                   </div>
@@ -153,12 +157,16 @@ function MainShopSystem({ showAdmin }) {
           )}
 
           {activeTab === 'add' && (
-            <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-2">
+            <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3">
               <input placeholder="ชื่อสินค้า" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+              <select className="w-full border p-2" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+                <option value="">-- เลือกหมวดหมู่ --</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
               <input placeholder="ราคาขาย" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
               <input placeholder="ต้นทุน" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
-              <input placeholder="สต็อกเริ่มต้น" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
-              <input placeholder="URL รูปภาพ" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
+              <input placeholder="สต็อก" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
+              <input placeholder="URL รูป" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
               <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
             </form>
           )}
