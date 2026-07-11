@@ -47,7 +47,7 @@ function MainShopSystem({ showAdmin }) {
   });
   const [restockAmounts, setRestockAmounts] = useState({});
 
-  const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Infy 20k", "M switch 15k","Esko bar 20k","Lambo 12k"];
+  const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
 
   useEffect(() => { fetchData(); }, []);
 
