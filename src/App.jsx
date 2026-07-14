@@ -169,12 +169,12 @@ function MainShopSystem({ showAdmin }) {
   <div className="space-y-4">
     {/* ส่วนแสดงปุ่มหมวดหมู่ */}
     <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100">
-      <button 
-        onClick={() => setSelectedCategory('ทั้งหมด')}
-        className={`px-4 py-2 rounded font-bold ${selectedCategory === 'ทั้งหมด' ? 'bg-blue-600 text-white' : 'bg-white'}`}
-      >
-        ทั้งหมด
-      </button>
+  <button 
+    onClick={() => setSelectedCategory('ทั้งหมด')}
+    className={`px-4 py-2 rounded font-bold ${selectedCategory === 'ทั้งหมด' ? 'bg-blue-600 text-white' : 'bg-white'}`}
+  >
+    ทั้งหมด
+  </button>
       {categories.map(cat => (
         <button 
           key={cat} 
