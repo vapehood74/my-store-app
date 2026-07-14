@@ -175,16 +175,19 @@ function MainShopSystem({ showAdmin }) {
   >
     ทั้งหมด
   </button>
-      {categories.map(cat => (
-        <button 
-          key={cat} 
-          onClick={() => setSelectedCategory(cat)}
-          className={`px-4 py-2 rounded font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white'}`}
-        >
-          {cat}
-        </button>
-      ))}
-    </div>
+      {categories
+    .filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))
+    .map(cat => (
+      <button 
+        key={cat} 
+        onClick={() => setSelectedCategory(cat)}
+        className={`px-4 py-2 rounded font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white'}`}
+      >
+        {cat}
+      </button>
+    ))
+  }
+</div>
 
     {/* ส่วนแสดงสินค้า (สินค้าจะถูกกรองตาม selectedCategory โดยอัตโนมัติ) */}
     <div className="grid grid-cols-2 gap-4 p-4">
