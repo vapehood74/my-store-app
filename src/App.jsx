@@ -40,28 +40,25 @@ function MainShopSystem({ showAdmin }) {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // สำหรับเปิดหน้ากรอกรหัส
-  const [targetDeleteId, setTargetDeleteId] = useState(null); // เก็บ ID รายการที่จะลบ
-  const [password, setPassword] = useState(''); // เก็บค่ารหัสที่กรอก
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState(null);
   const [password, setPassword] = useState('');
   // ฟังก์ชันลบรายการ
 async function handleDeleteSale(id) {
-  if (password !== '1234') { // เปลี่ยนรหัสผ่านที่นี่
-    alert("รหัสผ่านไม่ถูกต้อง!");
-    return;
-  }
-  
-  const { error } = await supabase.from('sales_history').delete().eq('id', id);
-  if (error) {
-    alert("ลบไม่สำเร็จ: " + error.message);
-  } else {
-    alert("ลบรายการสำเร็จ");
-    setPassword('');
-    setShowDeleteModal(false);
-    fetchData(); 
+    if (password !== '1234') { 
+      alert("รหัสผ่านไม่ถูกต้อง!");
+      return;
+    }
+    const { error } = await supabase.from('sales_history').delete().eq('id', id);
+    if (error) {
+      alert("ลบไม่สำเร็จ: " + error.message);
+    } else {
+      alert("ลบรายการสำเร็จ");
+      setPassword('');
+      setShowDeleteModal(false);
+      fetchData(); 
+    }
   }
   const [newProduct, setNewProduct] = useState({ 
     name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' 
