@@ -163,21 +163,44 @@ function MainShopSystem({ showAdmin }) {
     return { totalSales, totalProfit, totalQty };
   };
 
-  return (
+    return (
     <div className="p-6">
       {!showAdmin ? (
-        // ส่วนหน้าร้าน
-        <div className="grid grid-cols-2 gap-4">
-          {products.filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory)).map(p => (
-            <div key={p.id} className="bg-white p-4 rounded shadow border">
-              <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
-              <p className="font-bold">{p.name}</p>
-              <p className="text-xs text-gray-500">{p.category}</p>
-              <p>ราคา {p.price} บาท</p>
-            </div>
-          ))}
-        </div>
-      ) : (
+  <div className="space-y-4">
+    {/* ส่วนแสดงปุ่มหมวดหมู่ */}
+    <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100">
+      <button 
+        onClick={() => setSelectedCategory('ทั้งหมด')}
+        className={`px-4 py-2 rounded font-bold ${selectedCategory === 'ทั้งหมด' ? 'bg-blue-600 text-white' : 'bg-white'}`}
+      >
+        ทั้งหมด
+      </button>
+      {categories.map(cat => (
+        <button 
+          key={cat} 
+          onClick={() => setSelectedCategory(cat)}
+          className={`px-4 py-2 rounded font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white'}`}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
+
+    {/* ส่วนแสดงสินค้า (สินค้าจะถูกกรองตาม selectedCategory โดยอัตโนมัติ) */}
+    <div className="grid grid-cols-2 gap-4 p-4">
+      {products
+        .filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory))
+        .map(p => (
+          <div key={p.id} className="bg-white p-4 rounded shadow border">
+            <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
+            <p className="font-bold">{p.name}</p>
+            <p className="text-xs text-gray-500">{p.category}</p>
+            <p className="text-blue-600 font-bold">ราคา {p.price} บาท</p>
+          </div>
+        ))}
+    </div>
+  </div>
+) : (
         // ส่วนหลังบ้าน
         <div className="space-y-6">
           <div className="flex gap-2">
