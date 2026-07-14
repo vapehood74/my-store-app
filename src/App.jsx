@@ -40,8 +40,29 @@ function MainShopSystem({ showAdmin }) {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showDeleteModal, setShowDeleteModal] = useState(false); // สำหรับเปิดหน้ากรอกรหัส
+  const [targetDeleteId, setTargetDeleteId] = useState(null); // เก็บ ID รายการที่จะลบ
+  const [password, setPassword] = useState(''); // เก็บค่ารหัสที่กรอก
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [targetDeleteId, setTargetDeleteId] = useState(null);
+  const [password, setPassword] = useState('');
+  // ฟังก์ชันลบรายการ
+async function handleDeleteSale(id) {
+  if (password !== '1234') { // เปลี่ยนรหัสผ่านที่นี่
+    alert("รหัสผ่านไม่ถูกต้อง!");
+    return;
+  }
   
+  const { error } = await supabase.from('sales_history').delete().eq('id', id);
+  if (error) {
+    alert("ลบไม่สำเร็จ: " + error.message);
+  } else {
+    alert("ลบรายการสำเร็จ");
+    setPassword('');
+    setShowDeleteModal(false);
+    fetchData(); 
+  }
   const [newProduct, setNewProduct] = useState({ 
     name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' 
   });
@@ -177,12 +198,13 @@ function MainShopSystem({ showAdmin }) {
       ) : (
         <div className="space-y-6">
           <div className="flex gap-2">
-            {['dashboard', 'stock', 'add'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : 'เพิ่มสินค้า'}
-              </button>
-            ))}
-          </div>
+            {['dashboard', 'stock', 'add', 'history'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} 
+               className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+               {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'add' ? 'เพิ่มสินค้า' : 'ประวัติการขาย'}
+            </button>
+          ))}
+</div>
 
           
           {activeTab === 'dashboard' && (
@@ -247,4 +269,38 @@ function MainShopSystem({ showAdmin }) {
       )}
     </div>
   );
-}
+          {activeTab === 'history' && (
+      <div className="bg-white p-4 shadow rounded space-y-4">
+    <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
+    {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
+      <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
+        <div>
+          <p className="font-bold">{s.product_name}</p>
+          <p className="text-gray-500">ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
+          <p className="text-xs text-gray-400">{new Date(s.sold_at).toLocaleString()}</p>
+        </div>
+        <button 
+          onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }}
+          className="bg-red-500 text-white px-3 py-1 rounded text-xs"
+        >ลบ</button>
+      </div>
+    ))}
+
+    {/* Modal ใส่รหัสผ่าน */}
+    {showDeleteModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white p-6 rounded shadow w-full max-w-sm">
+          <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
+          <input 
+            type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl tracking-widest"
+            value={password} onChange={(e) => setPassword(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
+            <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
