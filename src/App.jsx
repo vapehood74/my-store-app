@@ -44,8 +44,23 @@ function MainShopSystem({ showAdmin }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState(null);
   const [password, setPassword] = useState('');
-  // ฟังก์ชันลบรายการ
-async function handleDeleteSale(id) {
+  const [newProduct, setNewProduct] = useState({ 
+    name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' 
+  });
+  
+  const [restockAmounts, setRestockAmounts] = useState({});
+
+  const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
+
+  useEffect(() => { fetchData(); }, []);
+
+  async function fetchData() {
+    const { data: p } = await supabase.from('products').select('*');
+    const { data: s } = await supabase.from('sales_history').select('*');
+    setProducts(p || []);
+    setSales(s || []);
+  }
+  async function handleDeleteSale(id) {
     if (password !== '1234') { 
       alert("รหัสผ่านไม่ถูกต้อง!");
       return;
@@ -60,25 +75,10 @@ async function handleDeleteSale(id) {
       fetchData(); 
     }
   }
-  const [newProduct, setNewProduct] = useState({ 
-    name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' 
-  });
-  const [restockAmounts, setRestockAmounts] = useState({});
-
-  const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
-
-  useEffect(() => { fetchData(); }, []);
-
-  async function fetchData() {
-    const { data: p } = await supabase.from('products').select('*');
-    const { data: s } = await supabase.from('sales_history').select('*');
-    setProducts(p || []);
-    setSales(s || []);
-  }
 
   const activeCategories = ['ทั้งหมด', ...categories.filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))];
 
-  async function handleAddProduct(e) {
+ async function handleAddProduct(e) {
     e.preventDefault();
     await supabase.from('products').insert([newProduct]);
     alert("เพิ่มสินค้าใหม่สำเร็จ!");
@@ -97,17 +97,13 @@ async function handleDeleteSale(id) {
 
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
-      // 1. ถามราคาที่ต้องการขาย (ค่าเริ่มต้นดึงมาจากราคาปกติในสินค้า)
       const inputPrice = window.prompt("ระบุราคาขาย:", p.price);
-      
-      // ถ้ากด Cancel หรือไม่ได้กรอกราคา ให้ยกเลิกการขาย
+    
       if (inputPrice === null || inputPrice === "") {
         return;
       }
-
       const finalPrice = Number(inputPrice);
 
-      // 2. ตัดสต็อก
       const { error: updateError } = await supabase
         .from('products')
         .update({ stock_quantity: Number(p.stock_quantity) - 1 })
@@ -172,15 +168,55 @@ async function handleDeleteSale(id) {
   return (
     <div className="p-6">
       {!showAdmin ? (
-        <div>
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-            {activeCategories.map(cat => (
-              <button key={cat} onClick={() => setSelectedCategory(cat)} 
-                className={`px-4 py-1 rounded-full whitespace-nowrap ${selectedCategory === cat ? 'bg-black text-white' : 'bg-gray-200'}`}>
-                {cat}
+        <div>{/* ... ส่วนหน้าร้านของคุณ ... */}</div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex gap-2">
+            {['dashboard', 'stock', 'add', 'history'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'add' ? 'เพิ่มสินค้า' : 'ประวัติการขาย'}
               </button>
             ))}
           </div>
+          
+          {activeTab === 'dashboard' && <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{/* ... Dashboard ... */}</div>}
+          {activeTab === 'stock' && <div>{/* ... Stock ... */}</div>}
+          {activeTab === 'add' && <div>{/* ... Add Product ... */}</div>}
+
+          {activeTab === 'history' && (
+            <div className="bg-white p-4 shadow rounded space-y-4">
+              <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
+              {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
+                <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
+                  <div>
+                    <p className="font-bold">{s.product_name}</p>
+                    <p>ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
+                  </div>
+                  <button onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs">ลบ</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white p-6 rounded shadow w-full max-w-sm">
+                <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
+                <input type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <div className="flex gap-2">
+                  <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
+                  <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
           <div className="grid grid-cols-2 gap-4">
             {products.filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory)).map(p => (
               <div key={p.id} className="bg-white p-4 rounded shadow border">
@@ -266,38 +302,3 @@ async function handleDeleteSale(id) {
       )}
     </div>
   );
-          {activeTab === 'history' && (
-      <div className="bg-white p-4 shadow rounded space-y-4">
-    <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
-    {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
-      <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
-        <div>
-          <p className="font-bold">{s.product_name}</p>
-          <p className="text-gray-500">ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
-          <p className="text-xs text-gray-400">{new Date(s.sold_at).toLocaleString()}</p>
-        </div>
-        <button 
-          onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }}
-          className="bg-red-500 text-white px-3 py-1 rounded text-xs"
-        >ลบ</button>
-      </div>
-    ))}
-
-    {/* Modal ใส่รหัสผ่าน */}
-    {showDeleteModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white p-6 rounded shadow w-full max-w-sm">
-          <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
-          <input 
-            type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl tracking-widest"
-            value={password} onChange={(e) => setPassword(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
-            <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-)}
