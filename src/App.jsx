@@ -103,28 +103,32 @@ function MainShopSystem({ showAdmin }) {
 
   // ฟังก์ชันคำนวณสถิติที่แก้ไขแล้ว
   const getStats = (days) => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  let totalSales = 0;
+  let totalProfit = 0;
+  let totalQuantity = 0; // เพิ่มตัวแปรนับจำนวนชิ้น
+
+  sales.forEach(s => {
+    if (!s.sold_at) return;
+    const saleDate = new Date(s.sold_at);
+    const diffInDays = Math.ceil((startOfToday - saleDate) / (1000 * 60 * 60 * 24));
     
-    let totalSales = 0;
-    let totalProfit = 0;
+    const isMatch = days === 1 ? diffInDays <= 0 : diffInDays <= days;
 
-    sales.forEach(s => {
-      if (!s.sold_at) return;
-      const saleDate = new Date(s.sold_at);
-      const diffInDays = Math.ceil((startOfToday - saleDate) / (1000 * 60 * 60 * 24));
+    if (isMatch) {
+      const sPrice = Number(s.sale_price) || 0;
+      const cPrice = Number(s.cost_price) || 0;
+      const qty = Number(s.quantity) || 1; // สมมติว่าในฐานข้อมูลมี field quantity
       
-      const isMatch = days === 1 ? diffInDays <= 0 : diffInDays <= days;
-
-      if (isMatch) {
-        const sPrice = Number(s.sale_price) || 0;
-        const cPrice = Number(s.cost_price) || 0;
-        totalSales += sPrice;
-        totalProfit += (sPrice - cPrice);
-      }
-    });
-    return { totalSales, totalProfit };
-  };
+      totalSales += sPrice;
+      totalProfit += (sPrice - cPrice);
+      totalQuantity += qty; 
+    }
+  });
+  return { totalSales, totalProfit, totalQuantity };
+};
 
   return (
     <div className="p-6">
