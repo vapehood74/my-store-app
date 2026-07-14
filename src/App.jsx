@@ -79,22 +79,44 @@ function MainShopSystem({ showAdmin }) {
 
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
-      await supabase.from('products').update({ stock_quantity: Number(p.stock_quantity) - 1 }).eq('id', p.id);
+      // 1. ถามราคาที่ต้องการขาย (ค่าเริ่มต้นดึงมาจากราคาปกติในสินค้า)
+      const inputPrice = window.prompt("ระบุราคาขาย:", p.price);
       
-      const { error } = await supabase.from('sales_history').insert({ 
+      // ถ้ากด Cancel หรือไม่ได้กรอกราคา ให้ยกเลิกการขาย
+      if (inputPrice === null || inputPrice === "") {
+        return;
+      }
+
+      const finalPrice = Number(inputPrice);
+
+      // 2. ตัดสต็อก
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ stock_quantity: Number(p.stock_quantity) - 1 })
+        .eq('id', p.id);
+
+      if (updateError) {
+        alert("เกิดข้อผิดพลาดในการตัดสต็อก: " + updateError.message);
+        return;
+      }
+      
+      // 3. บันทึกยอดขาย (ใช้ finalPrice ที่ได้จาก prompt)
+      const { error: insertError } = await supabase.from('sales_history').insert({ 
         product_id: p.id, 
         product_name: p.name, 
         quantity: 1,
-        sale_price: Number(p.price), 
+        sale_price: finalPrice, // ราคาที่แก้ไขแล้ว
         cost_price: Number(p.cost), 
         sold_at: new Date().toISOString() 
       });
 
-      if (error) {
-        console.error("Error inserting sale:", error);
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
+      if (insertError) {
+        console.error("Error inserting sale:", insertError);
+        alert("เกิดข้อผิดพลาดในการบันทึกยอดขาย: " + insertError.message);
       } else {
+        // อัปเดตข้อมูลหน้าจอใหม่หลังจากขายสำเร็จ
         fetchData();
+        alert(`บันทึกการขายสำเร็จ! (ราคา: ${finalPrice} บาท)`);
       }
     } else {
       alert("สินค้าหมด!");
