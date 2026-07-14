@@ -44,10 +44,7 @@ function MainShopSystem({ showAdmin }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState(null);
   const [password, setPassword] = useState('');
-  const [newProduct, setNewProduct] = useState({ 
-    name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' 
-  });
-  
+  const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
 
   const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
@@ -168,94 +165,47 @@ function MainShopSystem({ showAdmin }) {
   return (
     <div className="p-6">
       {!showAdmin ? (
-        <div>{/* ... ส่วนหน้าร้านของคุณ ... */}</div>
+        // ส่วนหน้าร้าน
+        <div className="grid grid-cols-2 gap-4">
+          {products.filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory)).map(p => (
+            <div key={p.id} className="bg-white p-4 rounded shadow border">
+              <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
+              <p className="font-bold">{p.name}</p>
+              <p className="text-xs text-gray-500">{p.category}</p>
+              <p>ราคา {p.price} บาท</p>
+            </div>
+          ))}
+        </div>
       ) : (
+        // ส่วนหลังบ้าน
         <div className="space-y-6">
           <div className="flex gap-2">
             {['dashboard', 'stock', 'add', 'history'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)} 
+                className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+              >
                 {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'add' ? 'เพิ่มสินค้า' : 'ประวัติการขาย'}
               </button>
             ))}
           </div>
-          
-          {activeTab === 'dashboard' && <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{/* ... Dashboard ... */}</div>}
-          {activeTab === 'stock' && <div>{/* ... Stock ... */}</div>}
-          {activeTab === 'add' && <div>{/* ... Add Product ... */}</div>}
 
-          {activeTab === 'history' && (
-            <div className="bg-white p-4 shadow rounded space-y-4">
-              <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
-              {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
-                <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
-                  <div>
-                    <p className="font-bold">{s.product_name}</p>
-                    <p>ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
-                  </div>
-                  <button onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs">ลบ</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Modal */}
-          {showDeleteModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white p-6 rounded shadow w-full max-w-sm">
-                <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
-                <input type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
-                  <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-          <div className="grid grid-cols-2 gap-4">
-            {products.filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory)).map(p => (
-              <div key={p.id} className="bg-white p-4 rounded shadow border">
-                <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
-                <p className="font-bold">{p.name}</p>
-                <p className="text-xs text-gray-500">{p.category}</p>
-                <p>ราคา {p.price} บาท</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex gap-2">
-            {['dashboard', 'stock', 'add', 'history'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} 
-               className={`p-2 rounded ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-               {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'add' ? 'เพิ่มสินค้า' : 'ประวัติการขาย'}
-            </button>
-          ))}
-</div>
-
-          
           {activeTab === 'dashboard' && (
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-           {[1, 7, 30].map(d => {
-            const { totalSales, totalProfit, totalQty } = calculateStats(d);
-            return (
-          <div key={d} className="bg-white p-4 shadow rounded border">
-          <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
-          <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
-          {/* ใช้ตัวแปร totalQty ที่ดึงออกมาจากฟังก์ชันแล้วตรงนี้ */}
-          <p className="text-lg font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
-          <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
-        </div>
-      );
-    })}
-  </div>
-)}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 7, 30].map(d => {
+                const { totalSales, totalProfit, totalQty } = calculateStats(d);
+                return (
+                  <div key={d} className="bg-white p-4 shadow rounded border">
+                    <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
+                    <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+                    <p className="text-lg font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
+                    <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {activeTab === 'stock' && (
             <div className="space-y-6">
@@ -284,6 +234,7 @@ function MainShopSystem({ showAdmin }) {
               })}
             </div>
           )}
+
           {activeTab === 'add' && (
             <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3">
               <input placeholder="ชื่อสินค้า" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
@@ -298,7 +249,37 @@ function MainShopSystem({ showAdmin }) {
               <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
             </form>
           )}
+
+          {activeTab === 'history' && (
+            <div className="bg-white p-4 shadow rounded space-y-4">
+              <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
+              {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
+                <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
+                  <div>
+                    <p className="font-bold">{s.product_name}</p>
+                    <p className="text-gray-500">ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
+                  </div>
+                  <button onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs">ลบ</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal ยืนยันการลบ */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white p-6 rounded shadow w-full max-w-sm">
+                <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
+                <input type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <div className="flex gap-2">
+                  <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
+                  <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
+}
