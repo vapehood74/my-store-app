@@ -162,22 +162,23 @@ function MainShopSystem({ showAdmin }) {
             ))}
           </div>
 
+          
           {activeTab === 'dashboard' && (
-            {activeTab === 'dashboard' && (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {[1, 7, 30].map(d => {
-        const { totalSales, totalProfit, totalQty } = calculateStats(d);
-        return (
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+           {[1, 7, 30].map(d => {
+            const { totalSales, totalProfit, totalQty } = calculateStats(d);
+            return (
           <div key={d} className="bg-white p-4 shadow rounded border">
-            <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
-            <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
-            <p className="text-lg font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
-            <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
-          </div>
-        );
-      })}
-    </div>
-  )}
+          <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
+          <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+          {/* ใช้ตัวแปร totalQty ที่ดึงออกมาจากฟังก์ชันแล้วตรงนี้ */}
+          <p className="text-lg font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
+          <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
+        </div>
+      );
+    })}
+  </div>
+)}
 
           {activeTab === 'stock' && (
             <div className="space-y-6">
