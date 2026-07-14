@@ -58,6 +58,7 @@ function MainShopSystem({ showAdmin }) {
     setSales(s || []);
   }
   async function handleDeleteSale(id) {
+    console.log("กำลังจะลบ ID:", id);
     if (password !== '1236') { 
       alert("รหัสผ่านไม่ถูกต้อง!");
       return;
