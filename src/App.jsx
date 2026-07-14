@@ -175,6 +175,7 @@ function MainShopSystem({ showAdmin }) {
                   <div key={item.days} className="bg-white p-4 shadow rounded border">
                     <h3 className="font-bold text-gray-700">ยอด {item.label}</h3>
                     <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+                    <p className="text-lg font-bold text-blue-600">ขายได้: {totalQuantity} ชิ้น</p>
                     <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
                   </div>
                 );
