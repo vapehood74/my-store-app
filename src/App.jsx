@@ -79,10 +79,8 @@ function MainShopSystem({ showAdmin }) {
 
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
-      // 1. ตัดสต็อก
       await supabase.from('products').update({ stock_quantity: Number(p.stock_quantity) - 1 }).eq('id', p.id);
       
-      // 2. บันทึกยอดขาย (ไม่ส่ง total_profit เพราะฐานข้อมูลคำนวณเอง)
       const { error } = await supabase.from('sales_history').insert({ 
         product_id: p.id, 
         product_name: p.name, 
@@ -103,18 +101,32 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  const calculateSales = (days) => {
+  // ฟังก์ชันคำนวณสถิติที่แก้ไขแล้ว
+  const getStats = (days) => {
     const now = new Date();
-    return sales.filter(s => {
-      if (!s.sold_at) return false;
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    let totalSales = 0;
+    let totalProfit = 0;
+
+    sales.forEach(s => {
+      if (!s.sold_at) return;
       const saleDate = new Date(s.sold_at);
-      const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
-      return diffDays <= days;
-    }).reduce((sum, item) => sum + (Number(item.sale_price) || 0), 0);
+      const diffInDays = Math.ceil((startOfToday - saleDate) / (1000 * 60 * 60 * 24));
+      
+      const isMatch = days === 1 ? diffInDays <= 0 : diffInDays <= days;
+
+      if (isMatch) {
+        const sPrice = Number(s.sale_price) || 0;
+        const cPrice = Number(s.cost_price) || 0;
+        totalSales += sPrice;
+        totalProfit += (sPrice - cPrice);
+      }
+    });
+    return { totalSales, totalProfit };
   };
 
   return (
-    // ... ส่วนแสดงผลคงเดิม ...
     <div className="p-6">
       {!showAdmin ? (
         <div>
@@ -148,81 +160,51 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-           <<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 7, 30].map(days => {
-      // คำนวณยอดขายและกำไรแยกกันสำหรับแต่ละช่วงเวลา
-      const now = new Date();
-      let totalSales = 0;
-      let totalProfit = 0;
-
-      sales.forEach(s => {
-        if (!s.sold_at) return;
-        const saleDate = new Date(s.sold_at);
-        const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
-        
-        if (diffDays <= days) {
-          const salePrice = Number(s.sale_price) || 0;
-          const costPrice = Number(s.cost_price) || 0;
-          totalSales += salePrice;
-          totalProfit += (salePrice - costPrice); // คำนวณกำไร: ราคาขาย - ต้นทุน
-        }
-      });
-
-      return (
-        <div key={days} className="bg-white p-4 shadow rounded border">
-          <h3 className="font-bold text-gray-700">ยอด {days === 1 ? "วันนี้" : days + " วันที่ผ่านมา"}</h3>
-          <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales} บ.</p>
-          <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit} บ.</p>
-        </div>
-      );
-    })}
-  </div>
-)}
-
-         {activeTab === 'stock' && (
-  <div className="space-y-6">
-    {categories.map((category) => {
-      // กรองสินค้าที่อยู่ในหมวดหมู่นี้
-      const productsInCategory = products.filter(p => p.category === category);
-      
-      // ถ้าหมวดหมู่นี้ไม่มีสินค้า ไม่ต้องแสดงหัวข้อ
-      if (productsInCategory.length === 0) return null;
-
-      return (
-        <div key={category} className="bg-white p-4 shadow rounded">
-          <h3 className="font-bold text-lg mb-3 border-b pb-2 text-blue-600">{category}</h3>
-          {productsInCategory.map(p => (
-            <div key={p.id} className="flex justify-between border-b p-3 items-center hover:bg-gray-50">
-              <div>
-                <p className="font-medium">{p.name}</p>
-                <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
-              </div>
-              <div className="flex gap-2 items-center">
-                <input 
-                  type="number" 
-                  placeholder="เติม" 
-                  className="w-16 border p-1 rounded text-center" 
-                  value={restockAmounts[p.id] || ''} 
-                  onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} 
-                />
-                <button 
-                  onClick={() => handleRestock(p)} 
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
-                  เติม
-                </button>
-                <button 
-                  onClick={() => handleSell(p)} 
-                  className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600">
-                  ขาย
-                </button>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { label: "วันนี้", days: 1 },
+                { label: "7 วัน", days: 7 },
+                { label: "30 วัน", days: 30 }
+              ].map(item => {
+                const { totalSales, totalProfit } = getStats(item.days);
+                return (
+                  <div key={item.days} className="bg-white p-4 shadow rounded border">
+                    <h3 className="font-bold text-gray-700">ยอด {item.label}</h3>
+                    <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+                    <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      );
-    })}
-  </div>
-)}
+          )}
+
+          {activeTab === 'stock' && (
+            <div className="space-y-6">
+              {categories.map((category) => {
+                const productsInCategory = products.filter(p => p.category === category);
+                if (productsInCategory.length === 0) return null;
+                return (
+                  <div key={category} className="bg-white p-4 shadow rounded">
+                    <h3 className="font-bold text-lg mb-3 border-b pb-2 text-blue-600">{category}</h3>
+                    {productsInCategory.map(p => (
+                      <div key={p.id} className="flex justify-between border-b p-3 items-center hover:bg-gray-50">
+                        <div>
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <input type="number" placeholder="เติม" className="w-16 border p-1 rounded text-center" 
+                            value={restockAmounts[p.id] || ''} onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} />
+                          <button onClick={() => handleRestock(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">เติม</button>
+                          <button onClick={() => handleSell(p)} className="bg-orange-500 text-white px-3 py-1 rounded text-sm">ขาย</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {activeTab === 'add' && (
             <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3">
               <input placeholder="ชื่อสินค้า" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
