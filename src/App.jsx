@@ -148,12 +148,36 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white p-4 shadow rounded"><h3>ยอดวันนี้</h3><p className="text-2xl font-bold">{calculateSales(1)}</p></div>
-              <div className="bg-white p-4 shadow rounded"><h3>ยอด 7 วัน</h3><p className="text-2xl font-bold">{calculateSales(7)}</p></div>
-              <div className="bg-white p-4 shadow rounded"><h3>ยอด 30 วัน</h3><p className="text-2xl font-bold">{calculateSales(30)}</p></div>
-            </div>
-          )}
+           <<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 7, 30].map(days => {
+      // คำนวณยอดขายและกำไรแยกกันสำหรับแต่ละช่วงเวลา
+      const now = new Date();
+      let totalSales = 0;
+      let totalProfit = 0;
+
+      sales.forEach(s => {
+        if (!s.sold_at) return;
+        const saleDate = new Date(s.sold_at);
+        const diffDays = (now - saleDate) / (1000 * 60 * 60 * 24);
+        
+        if (diffDays <= days) {
+          const salePrice = Number(s.sale_price) || 0;
+          const costPrice = Number(s.cost_price) || 0;
+          totalSales += salePrice;
+          totalProfit += (salePrice - costPrice); // คำนวณกำไร: ราคาขาย - ต้นทุน
+        }
+      });
+
+      return (
+        <div key={days} className="bg-white p-4 shadow rounded border">
+          <h3 className="font-bold text-gray-700">ยอด {days === 1 ? "วันนี้" : days + " วันที่ผ่านมา"}</h3>
+          <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales} บ.</p>
+          <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit} บ.</p>
+        </div>
+      );
+    })}
+  </div>
+)}
 
          {activeTab === 'stock' && (
   <div className="space-y-6">
