@@ -48,6 +48,9 @@ function MainShopSystem({ showAdmin }) {
   const [password, setPassword] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
+  const now = new Date();
+  const getMonthName = (date) => date.toLocaleString('th-TH', { month: 'long' });
+  const currentMonthName = getMonthName(now);
 
   const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
 
