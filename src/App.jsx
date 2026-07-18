@@ -48,9 +48,9 @@ function MainShopSystem({ showAdmin }) {
   const [password, setPassword] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
-  const now = new Date();
-  const getMonthName = (date) => date.toLocaleString('th-TH', { month: 'long' });
-  const currentMonthName = getMonthName(now);
+  const currentMonthName = now.toLocaleString('th-TH', { month: 'long' });
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthName = prevMonth.toLocaleString('th-TH', { month: 'long' });
 
   const categories = ["Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
 
@@ -224,6 +224,7 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
+  <{activeTab === 'dashboard' && (
   <div className="space-y-6">
     {/* 1. ส่วนสรุปภาพรวม (3 กล่องเดิม) */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -231,7 +232,9 @@ function MainShopSystem({ showAdmin }) {
         const { totalSales, totalProfit, totalQty } = calculateStats(d);
         return (
           <div key={d} className="bg-white p-4 shadow rounded border">
-            <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
+            <h3 className="font-bold text-gray-700">
+              ยอด {d === 1 ? "วันนี้" : d === 7 ? "สัปดาห์นี้" : "เดือนนี้"}
+            </h3>
             <p className="text-xl font-bold mt-1">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
             <p className="text-sm font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
             <p className="text-lg font-bold text-green-600">กำไร: {totalProfit.toLocaleString()} บ.</p>
@@ -240,28 +243,31 @@ function MainShopSystem({ showAdmin }) {
       })}
     </div>
 
-    {/* 2. ส่วนเลือกขยายรายละเอียด (เพิ่มมาใหม่) */}
+    {/* 2. ส่วนเลือกช่วงเวลาเพื่อดูรายละเอียด */}
     <div className="border-t pt-4">
-      <h3 className="font-bold mb-2">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
+      <h3 className="font-bold mb-3">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTimeRange(1)} className="...">วันนี้</button>
-  <button onClick={() => setTimeRange(7)} className="...">สัปดาห์นี้</button>
-  <button onClick={() => setTimeRange(30)} className="...">
-    {currentMonthName}
-  </button>
-</div>
+        <button onClick={() => setTimeRange(1)} className={`px-4 py-2 rounded ${timeRange === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>วันนี้</button>
+        <button onClick={() => setTimeRange(7)} className={`px-4 py-2 rounded ${timeRange === 7 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>สัปดาห์นี้</button>
+        <button onClick={() => setTimeRange(30)} className={`px-4 py-2 rounded ${timeRange === 30 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+          {currentMonthName}
+        </button>
+      </div>
+      
+      {/* ส่วนแสดงผลรายละเอียดที่เลือก */}
+      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
+        <h2 className="text-2xl font-bold text-blue-800">
+          สรุปข้อมูล: {timeRange === 1 ? "วันนี้" : timeRange === 7 ? "สัปดาห์นี้" : `เดือน${currentMonthName}`}
+        </h2>
+        <div className="flex flex-col md:flex-row gap-6 mt-4">
+           <p className="text-lg">ยอดขายรวม: <span className="font-bold text-xl">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
+           <p className="text-lg">ขายได้: <span className="font-bold text-xl text-blue-600">{calculateStats(timeRange).totalQty} ชิ้น</span></p>
+           <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-xl text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-{/* ส่วนกล่องข้อความ */}
-<div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-  <h2 className="text-2xl font-bold text-blue-800">
-    สรุปข้อมูล: {
-      timeRange === 1 ? "วันนี้" : 
-      timeRange === 7 ? "สัปดาห์นี้" : 
-      `เดือน${currentMonthName}`
-    }
-  </h2>
-  {/* ... ส่วนแสดงยอดขาย */}
-</div>
       
       {/* ส่วนแสดงแบบบรรทัดเดียวใหญ่ๆ */}
       <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
