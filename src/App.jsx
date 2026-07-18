@@ -241,16 +241,24 @@ function MainShopSystem({ showAdmin }) {
     <div className="border-t pt-4">
       <h3 className="font-bold mb-2">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
       <div className="flex gap-2 mb-4">
-        {[1, 7, 30].map(d => (
-          <button 
-            key={d}
-            onClick={() => setTimeRange(d)} // ต้องมี State timeRange ในคอมโพเนนต์
-            className={`px-4 py-2 rounded ${timeRange === d ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-          >
-            {d === 1 ? "วันนี้" : d + " วัน"}
-          </button>
-        ))}
-      </div>
+        <button onClick={() => setTimeRange(1)} className="...">วันนี้</button>
+  <button onClick={() => setTimeRange(7)} className="...">สัปดาห์นี้</button>
+  <button onClick={() => setTimeRange(30)} className="...">
+    {currentMonthName}
+  </button>
+</div>
+
+{/* ส่วนกล่องข้อความ */}
+<div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+  <h2 className="text-2xl font-bold text-blue-800">
+    สรุปข้อมูล: {
+      timeRange === 1 ? "วันนี้" : 
+      timeRange === 7 ? "สัปดาห์นี้" : 
+      `เดือน${currentMonthName}`
+    }
+  </h2>
+  {/* ... ส่วนแสดงยอดขาย */}
+</div>
       
       {/* ส่วนแสดงแบบบรรทัดเดียวใหญ่ๆ */}
       <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
