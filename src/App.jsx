@@ -36,8 +36,9 @@ export default function App() {
     </div>
   );
 }
-const [timeRange, setTimeRange] = useState(1);
+
 function MainShopSystem({ showAdmin }) {
+  const [timeRange, setTimeRange] = useState(1);
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
