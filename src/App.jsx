@@ -31,11 +31,12 @@ export default function App() {
         <div className="p-6"><Login onLoginSuccess={() => window.location.reload()} /></div>
       ) : (
         <MainShopSystem showAdmin={showAdmin} />
+        
       )}
     </div>
   );
 }
-
+const [timeRange, setTimeRange] = useState(1);
 function MainShopSystem({ showAdmin }) {
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
@@ -219,20 +220,50 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 7, 30].map(d => {
-                const { totalSales, totalProfit, totalQty } = calculateStats(d);
-                return (
-                  <div key={d} className="bg-white p-4 shadow rounded border">
-                    <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
-                    <p className="text-2xl font-bold mt-2">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
-                    <p className="text-lg font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
-                    <p className="text-xl font-bold text-green-600 mt-1">กำไร: {totalProfit.toLocaleString()} บ.</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+  <div className="space-y-6">
+    {/* 1. ส่วนสรุปภาพรวม (3 กล่องเดิม) */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[1, 7, 30].map(d => {
+        const { totalSales, totalProfit, totalQty } = calculateStats(d);
+        return (
+          <div key={d} className="bg-white p-4 shadow rounded border">
+            <h3 className="font-bold text-gray-700">ยอด {d === 1 ? "วันนี้" : d + " วันที่ผ่านมา"}</h3>
+            <p className="text-xl font-bold mt-1">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+            <p className="text-sm font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
+            <p className="text-lg font-bold text-green-600">กำไร: {totalProfit.toLocaleString()} บ.</p>
+          </div>
+        );
+      })}
+    </div>
+
+    {/* 2. ส่วนเลือกขยายรายละเอียด (เพิ่มมาใหม่) */}
+    <div className="border-t pt-4">
+      <h3 className="font-bold mb-2">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
+      <div className="flex gap-2 mb-4">
+        {[1, 7, 30].map(d => (
+          <button 
+            key={d}
+            onClick={() => setTimeRange(d)} // ต้องมี State timeRange ในคอมโพเนนต์
+            className={`px-4 py-2 rounded ${timeRange === d ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+          >
+            {d === 1 ? "วันนี้" : d + " วัน"}
+          </button>
+        ))}
+      </div>
+      
+      {/* ส่วนแสดงแบบบรรทัดเดียวใหญ่ๆ */}
+      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+        <h2 className="text-2xl font-bold text-blue-800">
+          สรุปข้อมูล: {timeRange === 1 ? "วันนี้" : timeRange + " วันที่ผ่านมา"}
+        </h2>
+        <div className="flex flex-col md:flex-row gap-4 mt-2">
+           <p className="text-lg">ยอดขายรวม: <span className="font-bold">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
+           <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
           {activeTab === 'stock' && (
             <div className="space-y-6">
