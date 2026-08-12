@@ -224,12 +224,12 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-  <div className="space-y-6">
-    {/* 1. ส่วนสรุปภาพรวม */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {[1, 7, 30].map(d => {
-        const { totalSales, totalProfit, totalQty } = calculateStats(d);
-        return (
+          <div className="space-y-6">
+           {/* 1. ส่วนสรุปภาพรวม */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 7, 30].map(d => {
+          const { totalSales, totalProfit, totalQty } = calculateStats(d);
+         return (
           <div key={d} className="bg-white p-4 shadow rounded border">
             <h3 className="font-bold text-gray-700">
               ยอด {d === 1 ? "วันนี้" : d === 7 ? "สัปดาห์นี้" : "เดือนนี้"}
