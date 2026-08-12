@@ -31,7 +31,6 @@ export default function App() {
         <div className="p-6"><Login onLoginSuccess={() => window.location.reload()} /></div>
       ) : (
         <MainShopSystem showAdmin={showAdmin} />
-        
       )}
     </div>
   );
@@ -48,11 +47,14 @@ function MainShopSystem({ showAdmin }) {
   const [password, setPassword] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
+
+  // กำหนดตัวแปรเดือนให้ถูกต้องตามหลักของ JavaScript
+  const now = new Date();
   const currentMonthName = now.toLocaleString('th-TH', { month: 'long' });
   const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonthName = prevMonth.toLocaleString('th-TH', { month: 'long' });
 
-  const categories =[ "Sings five 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k","Marbo 25k","Esko bar 20k","Lambo 12k"];
+  const categories = ["Singfiv 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k", "Marbo 25k", "Esko bar 20k", "Lambo 12k"];
 
   useEffect(() => { fetchData(); }, []);
 
@@ -62,8 +64,8 @@ function MainShopSystem({ showAdmin }) {
     setProducts(p || []);
     setSales(s || []);
   }
+
   async function handleDeleteSale(id) {
-    console.log("กำลังจะลบ ID:", id);
     if (password !== '1236') { 
       alert("รหัสผ่านไม่ถูกต้อง!");
       return;
@@ -79,9 +81,7 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  const activeCategories = ['ทั้งหมด', ...categories.filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))];
-
- async function handleAddProduct(e) {
+  async function handleAddProduct(e) {
     e.preventDefault();
     await supabase.from('products').insert([newProduct]);
     alert("เพิ่มสินค้าใหม่สำเร็จ!");
@@ -98,18 +98,37 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
+  // ปรับปรุงฟังก์ชันขาย: เลือกจำนวนชิ้น และแก้ไขราคาขายรวมได้ทันที
   async function handleSell(p) {
     if (p.stock_quantity > 0) {
-      const inputPrice = window.prompt("ระบุราคาขาย:", p.price);
-    
-      if (inputPrice === null || inputPrice === "") {
+      const qtyInput = prompt(`ระบุจำนวนที่ต้องการขาย (${p.name}):`, "1");
+      if (qtyInput === null) return;
+      const quantity = parseInt(qtyInput);
+      
+      if (isNaN(quantity) || quantity <= 0) {
+        alert("กรุณากรอกจำนวนให้ถูกต้อง");
         return;
       }
-      const finalPrice = Number(inputPrice);
 
+      if (quantity > p.stock_quantity) {
+        alert("สินค้าในสต็อกไม่พอขาย!");
+        return;
+      }
+
+      const defaultTotal = Number(p.price) * quantity;
+      const priceInput = prompt(`ระบุราคาขายรวมทั้งหมด (ราคาปกติ ${defaultTotal} บาท):`, defaultTotal);
+      if (priceInput === null) return;
+      
+      const finalPrice = Number(priceInput);
+      if (isNaN(finalPrice) || finalPrice < 0) {
+        alert("กรุณากรอกราคาให้ถูกต้อง");
+        return;
+      }
+
+      // ตัดสต็อกตามจำนวนที่ขาย
       const { error: updateError } = await supabase
         .from('products')
-        .update({ stock_quantity: Number(p.stock_quantity) - 1 })
+        .update({ stock_quantity: Number(p.stock_quantity) - quantity })
         .eq('id', p.id);
 
       if (updateError) {
@@ -117,37 +136,34 @@ function MainShopSystem({ showAdmin }) {
         return;
       }
       
-      // 3. บันทึกยอดขาย (ใช้ finalPrice ที่ได้จาก prompt)
+      // บันทึกประวัติการขาย
       const { error: insertError } = await supabase.from('sales_history').insert({ 
         product_id: p.id, 
         product_name: p.name, 
-        quantity: 1,
-        sale_price: finalPrice, // ราคาที่แก้ไขแล้ว
-        cost_price: Number(p.cost), 
+        quantity: quantity,
+        sale_price: finalPrice, 
+        cost_price: Number(p.cost) * quantity, 
         sold_at: new Date().toISOString() 
       });
 
       if (insertError) {
-        console.error("Error inserting sale:", insertError);
         alert("เกิดข้อผิดพลาดในการบันทึกยอดขาย: " + insertError.message);
       } else {
-        // อัปเดตข้อมูลหน้าจอใหม่หลังจากขายสำเร็จ
         fetchData();
-        alert(`บันทึกการขายสำเร็จ! (ราคา: ${finalPrice} บาท)`);
+        alert(`บันทึกการขายสำเร็จ! (${quantity} ชิ้น | ยอดรวม: ${finalPrice} บาท)`);
       }
     } else {
       alert("สินค้าหมด!");
     }
   }
 
-  // ฟังก์ชันคำนวณสถิติที่แก้ไขแล้ว
   const calculateStats = (days) => {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     let totalSales = 0;
     let totalProfit = 0;
-    let totalQty = 0; // เพิ่มตัวแปรสำหรับนับจำนวนชิ้น
+    let totalQty = 0;
 
     sales.forEach(s => {
       if (!s.sold_at) return;
@@ -168,48 +184,45 @@ function MainShopSystem({ showAdmin }) {
     return { totalSales, totalProfit, totalQty };
   };
 
-    return (
+  return (
     <div className="p-6">
       {!showAdmin ? (
-  <div className="space-y-4">
-    {/* ส่วนแสดงปุ่มหมวดหมู่ */}
-    <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100">
-  <button 
-    onClick={() => setSelectedCategory('ทั้งหมด')}
-    className={`px-4 py-2 rounded font-bold ${selectedCategory === 'ทั้งหมด' ? 'bg-blue-600 text-white' : 'bg-white'}`}
-  >
-    ทั้งหมด
-  </button>
-      {categories
-    .filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))
-    .map(cat => (
-      <button 
-        key={cat} 
-        onClick={() => setSelectedCategory(cat)}
-        className={`px-4 py-2 rounded font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white'}`}
-      >
-        {cat}
-      </button>
-    ))
-  }
-</div>
-
-    {/* ส่วนแสดงสินค้า (สินค้าจะถูกกรองตาม selectedCategory โดยอัตโนมัติ) */}
-    <div className="grid grid-cols-2 gap-4 p-4">
-      {products
-        .filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory))
-        .map(p => (
-          <div key={p.id} className="bg-white p-4 rounded shadow border">
-            <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
-            <p className="font-bold">{p.name}</p>
-            <p className="text-xs text-gray-500">{p.category}</p>
-            <p className="text-blue-600 font-bold">ราคา {p.price} บาท</p>
+        <div className="space-y-4">
+          <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100">
+            <button 
+              onClick={() => setSelectedCategory('ทั้งหมด')}
+              className={`px-4 py-2 rounded font-bold ${selectedCategory === 'ทั้งหมด' ? 'bg-blue-600 text-white' : 'bg-white'}`}
+            >
+              ทั้งหมด
+            </button>
+            {categories
+              .filter(cat => products.some(p => p.category === cat && p.stock_quantity > 0))
+              .map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white'}`}
+                >
+                  {cat}
+                </button>
+              ))
+            }
           </div>
-        ))}
-    </div>
-  </div>
-) : (
-        // ส่วนหลังบ้าน
+
+          <div className="grid grid-cols-2 gap-4 p-4">
+            {products
+              .filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory))
+              .map(p => (
+                <div key={p.id} className="bg-white p-4 rounded shadow border">
+                  <img src={p.image_url} className="w-full h-32 object-cover mb-2" onError={(e) => e.target.style.display = 'none'} />
+                  <p className="font-bold">{p.name}</p>
+                  <p className="text-xs text-gray-500">{p.category}</p>
+                  <p className="text-blue-600 font-bold">ราคา {p.price} บาท</p>
+                </div>
+              ))}
+          </div>
+        </div>
+      ) : (
         <div className="space-y-6">
           <div className="flex gap-2">
             {['dashboard', 'stock', 'add', 'history'].map(tab => (
@@ -224,64 +237,46 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-           {/* 1. ส่วนสรุปภาพรวม */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 7, 30].map(d => {
-          const { totalSales, totalProfit, totalQty } = calculateStats(d);
-         return (
-          <div key={d} className="bg-white p-4 shadow rounded border">
-            <h3 className="font-bold text-gray-700">
-              ยอด {d === 1 ? "วันนี้" : d === 7 ? "สัปดาห์นี้" : "เดือนนี้"}
-            </h3>
-            <p className="text-xl font-bold mt-1">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
-            <p className="text-sm font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
-            <p className="text-lg font-bold text-green-600">กำไร: {totalProfit.toLocaleString()} บ.</p>
-          </div>
-        );
-      })}
-    </div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 7, 30].map(d => {
+                  const { totalSales, totalProfit, totalQty } = calculateStats(d);
+                  return (
+                    <div key={d} className="bg-white p-4 shadow rounded border">
+                      <h3 className="font-bold text-gray-700">
+                        ยอด {d === 1 ? "วันนี้" : d === 7 ? "สัปดาห์นี้" : "เดือนนี้"}
+                      </h3>
+                      <p className="text-xl font-bold mt-1">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+                      <p className="text-sm font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
+                      <p className="text-lg font-bold text-green-600">กำไร: {totalProfit.toLocaleString()} บ.</p>
+                    </div>
+                  );
+                })}
+              </div>
 
-    {/* 2. ส่วนเลือกช่วงเวลาเพื่อดูรายละเอียด */}
-    <div className="border-t pt-4">
-      <h3 className="font-bold mb-3">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setTimeRange(1)} className={`px-4 py-2 rounded ${timeRange === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>วันนี้</button>
-        <button onClick={() => setTimeRange(7)} className={`px-4 py-2 rounded ${timeRange === 7 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>สัปดาห์นี้</button>
-        <button onClick={() => setTimeRange(30)} className={`px-4 py-2 rounded ${timeRange === 30 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-          {currentMonthName}
-        </button>
-      </div>
-      
-      {/* ส่วนแสดงผลรายละเอียดที่เลือก */}
-      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
-        <h2 className="text-2xl font-bold text-blue-800">
-          สรุปข้อมูล: {timeRange === 1 ? "วันนี้" : timeRange === 7 ? "สัปดาห์นี้" : `เดือน${currentMonthName}`}
-        </h2>
-        <div className="flex flex-col md:flex-row gap-6 mt-4">
-           <p className="text-lg">ยอดขายรวม: <span className="font-bold text-xl">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
-           <p className="text-lg">ขายได้: <span className="font-bold text-xl text-blue-600">{calculateStats(timeRange).totalQty} ชิ้น</span></p>
-           <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-xl text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-      
-      {/* ส่วนแสดงแบบบรรทัดเดียวใหญ่ๆ */}
-      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-        <h2 className="text-2xl font-bold text-blue-800">
-          สรุปข้อมูล: {timeRange === 1 ? "วันนี้" : timeRange + " วันที่ผ่านมา"}
-        </h2>
-        <div className="flex flex-col md:flex-row gap-4 mt-2">
-           <p className="text-lg">ยอดขายรวม: <span className="font-bold">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
-           <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+              <div className="border-t pt-4">
+                <h3 className="font-bold mb-3">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
+                <div className="flex gap-2 mb-4">
+                  <button onClick={() => setTimeRange(1)} className={`px-4 py-2 rounded ${timeRange === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>วันนี้</button>
+                  <button onClick={() => setTimeRange(7)} className={`px-4 py-2 rounded ${timeRange === 7 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>สัปดาห์นี้</button>
+                  <button onClick={() => setTimeRange(30)} className={`px-4 py-2 rounded ${timeRange === 30 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+                    {currentMonthName}
+                  </button>
+                </div>
+                
+                <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
+                  <h2 className="text-2xl font-bold text-blue-800">
+                    สรุปข้อมูล: {timeRange === 1 ? "วันนี้" : timeRange === 7 ? "สัปดาห์นี้" : `เดือน${currentMonthName}`}
+                  </h2>
+                  <div className="flex flex-col md:flex-row gap-6 mt-4">
+                     <p className="text-lg">ยอดขายรวม: <span className="font-bold text-xl">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
+                     <p className="text-lg">ขายได้: <span className="font-bold text-xl text-blue-600">{calculateStats(timeRange).totalQty} ชิ้น</span></p>
+                     <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-xl text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === 'stock' && (
             <div className="space-y-6">
@@ -313,15 +308,15 @@ function MainShopSystem({ showAdmin }) {
 
           {activeTab === 'add' && (
             <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3">
-              <input placeholder="ชื่อสินค้า" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-              <select className="w-full border p-2" onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+              <input placeholder="ชื่อสินค้า" className="w-full border p-2" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+              <select className="w-full border p-2" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
                 <option value="">-- เลือกหมวดหมู่ --</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <input placeholder="ราคาขาย" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
-              <input placeholder="ต้นทุน" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
-              <input placeholder="สต็อก" type="number" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
-              <input placeholder="URL รูป" className="w-full border p-2" onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
+              <input placeholder="ราคาขาย" type="number" className="w-full border p-2" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+              <input placeholder="ต้นทุน" type="number" className="w-full border p-2" value={newProduct.cost || ''} onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
+              <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
+              <input placeholder="URL รูป" className="w-full border p-2" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
               <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
             </form>
           )}
@@ -332,7 +327,7 @@ function MainShopSystem({ showAdmin }) {
               {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
                 <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
                   <div>
-                    <p className="font-bold">{s.product_name}</p>
+                    <p className="font-bold">{s.product_name} <span className="text-blue-600 font-normal">({s.quantity || 1} ชิ้น)</span></p>
                     <p className="text-gray-500">ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
                   </div>
                   <button onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs">ลบ</button>
@@ -341,7 +336,6 @@ function MainShopSystem({ showAdmin }) {
             </div>
           )}
 
-          {/* Modal ยืนยันการลบ */}
           {showDeleteModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
               <div className="bg-white p-6 rounded shadow w-full max-w-sm">
