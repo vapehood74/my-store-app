@@ -224,7 +224,6 @@ function MainShopSystem({ showAdmin }) {
           </div>
 
           {activeTab === 'dashboard' && (
-  <{activeTab === 'dashboard' && (
   <div className="space-y-6">
     {/* 1. ส่วนสรุปภาพรวม (3 กล่องเดิม) */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
