@@ -225,7 +225,7 @@ function MainShopSystem({ showAdmin }) {
 
           {activeTab === 'dashboard' && (
   <div className="space-y-6">
-    {/* 1. ส่วนสรุปภาพรวม (3 กล่องเดิม) */}
+    {/* 1. ส่วนสรุปภาพรวม */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {[1, 7, 30].map(d => {
         const { totalSales, totalProfit, totalQty } = calculateStats(d);
@@ -266,6 +266,7 @@ function MainShopSystem({ showAdmin }) {
       </div>
     </div>
   </div>
+)}
 
       
       {/* ส่วนแสดงแบบบรรทัดเดียวใหญ่ๆ */}
