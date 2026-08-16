@@ -168,8 +168,20 @@ function MainShopSystem({ showAdmin }) {
     sales.forEach(s => {
       if (!s.sold_at) return;
       const saleDate = new Date(s.sold_at);
-      const diffInDays = Math.ceil((startOfToday - saleDate) / (1000 * 60 * 60 * 24));
-      const isMatch = days === 1 ? diffInDays <= 0 : diffInDays <= days;
+      let isMatch = false;
+
+      if (days === 1) {
+        // เฉพาะวันนี้
+        const diffInDays = Math.ceil((startOfToday - saleDate) / (1000 * 60 * 60 * 24));
+        isMatch = diffInDays <= 0;
+      } else if (days === 7) {
+        // 7 วันย้อนหลัง
+        const diffInDays = Math.ceil((startOfToday - saleDate) / (1000 * 60 * 60 * 24));
+        isMatch = diffInDays >= 0 && diffInDays <= 7;
+      } else if (days === 30) {
+        // เฉพาะเดือนปัจจุบัน (เดือนสิงหาคม 2026 นี้เท่านั้น ไม่ดึงเดือน กรกฎาคม ปนมา)
+        isMatch = saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
+      }
 
       if (isMatch) {
         const sPrice = Number(s.sale_price) || 0;
