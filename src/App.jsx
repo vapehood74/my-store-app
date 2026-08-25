@@ -477,114 +477,100 @@ function MainShopSystem({ showAdmin }) {
         ))}
       </div>
       
-      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
-        <h2 className="text-2xl font-bold text-blue-800">
-          สรุปข้อมูล: {timeRange === 'today' ? 'วันนี้' : timeRange === 'week' ? 'สัปดาห์นี้' : `เดือน${timeRange}`}
-        </h2>
-        <div className="flex flex-col md:flex-row gap-6 mt-4">
-           <p className="text-lg">ยอดขายรวม: <span className="font-bold text-xl">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
-           <p className="text-lg">ขายได้: <span className="font-bold text-xl text-blue-600">{calculateStats(timeRange).totalQty} ชิ้น</span></p>
-           <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-xl text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
-        </div>
-      </div>
+{/* 📊 ส่วนแสดง "หมวดหมู่สินค้าที่ขายดี" */}
+<div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
+  <div className="flex justify-between items-center mb-4">
+    <h3 className="text-lg font-bold text-gray-800">
+      🏷️ หมวดหมู่สินค้าขายดีประจำช่วงเวลานี้
+    </h3>
+    <span className="text-sm text-gray-500">สรุปตามหมวดหมู่</span>
+  </div>
 
-      {/* 📊 ส่วนเพิ่มใหม่: ตารางจัดอันดับสินค้าขายดีพร้อม Progress Bar ตามช่วงเวลาที่เลือก */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-800">
-            🔥 สินค้าขายดีประจำช่วงเวลานี้
-          </h3>
-          <span className="text-sm text-gray-500">แสดงสูงสุด 5 อันดับ</span>
-        </div>
+  {(() => {
+    // 1. กรองประวัติการขายตามช่วงเวลา (timeRange) ที่ผู้ใช้เลือก
+    const filteredSales = sales.filter(s => {
+      if (!s.sold_at) return false;
+      const saleDate = new Date(s.sold_at);
+      const now = new Date();
 
-        {(() => {
-          // กรองข้อมูลประวัติการขายตามช่วงเวลา (timeRange) ที่ผู้ใช้เลือก
-          const filteredSales = sales.filter(s => {
-            if (!s.sold_at) return false;
-            const saleDate = new Date(s.sold_at);
-            const now = new Date();
+      if (timeRange === 'today') {
+        return saleDate.toDateString() === now.toDateString();
+      } else if (timeRange === 'week') {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(now.getDate() - 7);
+        return saleDate >= oneWeekAgo;
+      } else {
+        const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        const mName = monthsThai[saleDate.getMonth()];
+        const yNum = saleDate.getFullYear() + 543;
+        const formattedMonth = `${mName} ${yNum}`;
+        return formattedMonth === timeRange;
+      }
+    });
 
-            if (timeRange === 'today') {
-              return saleDate.toDateString() === now.toDateString();
-            } else if (timeRange === 'week') {
-              const oneWeekAgo = new Date();
-              oneWeekAgo.setDate(now.getDate() - 7);
-              return saleDate >= oneWeekAgo;
-            } else {
-              // กรณีเลือกเป็นเดือน เช่น "สิงหาคม 2569"
-              const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-              const mName = monthsThai[saleDate.getMonth()];
-              const yNum = saleDate.getFullYear() + 543;
-              const formattedMonth = `${mName} ${yNum}`;
-              return formattedMonth === timeRange;
-            }
-          });
+    // 2. ดึงหมวดหมู่ของสินค้าแต่ละตัวจากตระกูล products มาเทียบกับ sales
+    const categorySummary = {};
+    filteredSales.forEach(s => {
+      // ค้นหาหมวดหมู่จากรายการสินค้าจริง
+      const matchedProduct = products.find(p => p.id === s.product_id || p.name === s.product_name);
+      const categoryName = matchedProduct ? matchedProduct.category : 'อื่นๆ';
+      
+      const qty = Number(s.quantity || 1);
+      const price = Number(s.sale_price || 0) * qty;
 
-          // รวมจำนวนและยอดขายแยกตามชื่อสินค้า
-          const productSummary = {};
-          filteredSales.forEach(s => {
-            const name = s.product_name || 'สินค้าไม่ระบุชื่อ';
-            const qty = Number(s.quantity || 1);
-            const price = Number(s.sale_price || 0) * qty;
+      if (!categorySummary[categoryName]) {
+        categorySummary[categoryName] = { count: 0, total: 0 };
+      }
+      categorySummary[categoryName].count += qty;
+      categorySummary[categoryName].total += price;
+    });
 
-            if (!productSummary[name]) {
-              productSummary[name] = { count: 0, total: 0 };
-            }
-            productSummary[name].count += qty;
-            productSummary[name].total += price;
-          });
+    // 3. แปลงเป็น Array แล้วเรียงลำดับหมวดหมู่ที่ขายดีที่สุด
+    const topCategories = Object.keys(categorySummary)
+      .map(category => ({
+        category,
+        count: categorySummary[category].count,
+        total: categorySummary[category].total
+      }))
+      .sort((a, b) => b.count - a.count);
 
-          // แปลงเป็น Array แล้วเรียงลำดับจากมากไปน้อย และตัดมาแค่ 5 อันดับแรก
-          const topProducts = Object.keys(productSummary)
-            .map(name => ({
-              name,
-              count: productSummary[name].count,
-              total: productSummary[name].total
-            }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
+    const maxCount = topCategories.length > 0 ? topCategories[0].count : 1;
 
-          // หาจำนวนชิ้นสูงสุด เพื่อเอามาคำนวณความกว้างของหลอด Progress Bar (ให้หลอดอันดับ 1 ยาวเต็ม 100%)
-          const maxCount = topProducts.length > 0 ? topProducts[0].count : 1;
+    if (topCategories.length === 0) {
+      return (
+        <p className="text-gray-500 text-center py-6">ยังไม่มีประวัติการขายในช่วงเวลานี้</p>
+      );
+    }
 
-          if (topProducts.length === 0) {
-            return (
-              <p className="text-gray-500 text-center py-6">ยังไม่มีประวัติการขายในช่วงเวลานี้</p>
-            );
-          }
+    return (
+      <div className="space-y-4">
+        {topCategories.map((item, index) => {
+          const percentage = Math.max((item.count / maxCount) * 100, 10);
 
           return (
-            <div className="space-y-4">
-              {topProducts.map((item, index) => {
-                const percentage = Math.max((item.count / maxCount) * 100, 10); // อย่างน้อยให้เห็นหลอด 10%
-
-                return (
-                  <div key={index} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-700">
-                        {index + 1}. {item.name}
-                      </span>
-                      <span className="text-gray-600 font-semibold">
-                        ขายได้ <span className="text-blue-600">{item.count}</span> ชิ้น ({item.total.toLocaleString()} บ.)
-                      </span>
-                    </div>
-                    {/* หลอดแสดงสัดส่วน Progress Bar */}
-                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div key={index} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700">
+                  {index + 1}. หมวดหมู่: <span className="text-blue-600 font-bold">{item.category}</span>
+                </span>
+                <span className="text-gray-600 font-semibold">
+                  ขายได้ <span className="text-blue-600">{item.count}</span> ชิ้น ({item.total.toLocaleString()} บ.)
+                </span>
+              </div>
+              {/* หลอดแสดงสัดส่วน Progress Bar */}
+              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-3 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${percentage}%` }}
+                ></div>
+              </div>
             </div>
           );
-        })()}
+        })}
       </div>
-    </div>
-  </div>
-)}
+    );
+  })()}
+</div>
 
 {activeTab === 'stock' && (
   <div className="space-y-6">
