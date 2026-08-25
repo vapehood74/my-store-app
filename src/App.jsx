@@ -48,38 +48,55 @@ function MainShopSystem({ showAdmin }) {
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
 
-  // ── State สำหรับฟังก์ชันจัดการหน้าเว็บ (เก็บใน localStorage เพื่อความสะดวกรวดเร็ว) ──
-  const [webConfig, setWebConfig] = useState(() => {
-    const saved = localStorage.getItem('bossy_web_config');
-    return saved ? JSON.parse(saved) : {
-      announcement: "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
-      showAnnouncement: true,
-      hideProductsAndCategories: false, // ซ่อนสินค้าและหมวดหมู่ทั้งหมด (มีรูปล็อค)
-      hideCategoriesOnly: false,        // ซ่อนเฉพาะหมวดหมู่
-      emptyShopMessage: "ร้านค้าปิดปรับปรุงชั่วคราว หรือสินค้าหมดเกลี้ยง",
-      isEmptyShop: false                // ทำให้หน้าสินค้าว่างเปล่า
-    };
+  // ── State สำหรับตั้งค่าหน้าเว็บ (ดึงค่ากลางจาก Supabase) ──
+  const [webConfig, setWebConfig] = useState({
+    announcement: "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
+    showAnnouncement: true,
+    hideProductsAndCategories: false, 
+    hideCategoriesOnly: false,        
+    emptyShopMessage: "ร้านค้าปิดปรับปรุงชั่วคราว หรือสินค้าหมดเกลี้ยง",
+    isEmptyShop: false                
   });
 
-  useEffect(() => {
-    localStorage.setItem('bossy_web_config', JSON.stringify(webConfig));
-  }, [webConfig]);
-
-  // State สำหรับป๊อปอัปแจ้งเตือนหน้าเว็บตอนเข้าเว็บ
-  const [showPopupAlert, setShowPopupAlert] = useState(webConfig.showAnnouncement);
+  const [showPopupAlert, setShowPopupAlert] = useState(false);
 
   const now = new Date();
   const currentMonthName = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
 
   const categories = ["Singfiv 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k", "Marbo 25k", "Esko bar 20k", "Lambo 12k"];
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+    fetchWebConfig();
+  }, []);
 
   async function fetchData() {
     const { data: p } = await supabase.from('products').select('*');
     const { data: s } = await supabase.from('sales_history').select('*');
     setProducts(p || []);
     setSales(s || []);
+  }
+
+  // ดึงค่าการตั้งค่าเว็บจาก Supabase
+  async function fetchWebConfig() {
+    const { data, error } = await supabase.from('settings').select('*').eq('id', 1).single();
+    if (data) {
+      setWebConfig(data);
+      // เช็คเงื่อนไขการเด้งป๊อปอัปเฉพาะเมื่อเปิดใช้งาน และเครื่องนี้ยังไม่ได้กดซ่อนป๊อปอัปนี้ไว้ใน Session นี้
+      const isHidden = sessionStorage.getItem('bossy_hide_popup_session');
+      if (data.showAnnouncement && !isHidden) {
+        setShowPopupAlert(true);
+      }
+    }
+  }
+
+  // บันทึกค่าการตั้งค่าเว็บลง Supabase (เพื่อให้ทุกเครื่องเห็นเหมือนกันหมด)
+  async function updateWebConfig(newConfig) {
+    setWebConfig(newConfig);
+    const { error } = await supabase.from('settings').upsert({ id: 1, ...newConfig });
+    if (error) {
+      console.error("Error saving config:", error.message);
+    }
   }
 
   async function handleDeleteSale(id) {
@@ -221,33 +238,50 @@ function MainShopSystem({ showAdmin }) {
 
   return (
     <div className="p-6 relative">
-      {/* 1. กล่องข้อความแจ้งเตือนหน้าเว็บ (Popup / Banner) เด้งตอนเข้าเว็บ */}
+      {/* 1. กล่องข้อความแจ้งเตือนหน้าเว็บ (Popup) ดึงค่ากลาง */}
       {!showAdmin && webConfig.showAnnouncement && showPopupAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full text-center border-t-4 border-blue-600 animate-fade-in">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full text-center border-t-4 border-blue-600 relative">
+            <button 
+              onClick={() => setShowPopupAlert(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 font-bold text-xl px-2"
+            >
+              &times;
+            </button>
+
             <h3 className="font-bold text-lg mb-2 text-blue-600">📢 ประกาศจากทางร้าน</h3>
             <p className="text-gray-700 mb-6 whitespace-pre-wrap">{webConfig.announcement}</p>
-            <button 
-              onClick={() => setShowPopupAlert(false)} 
-              className="bg-blue-600 text-white px-6 py-2 rounded font-bold w-full hover:bg-blue-700 transition"
-            >
-              รับทราบ / ปิดประกาศ
-            </button>
+            
+            <div className="flex flex-col gap-2">
+              <button 
+                onClick={() => setShowPopupAlert(false)} 
+                className="bg-blue-600 text-white px-6 py-2 rounded font-bold w-full hover:bg-blue-700 transition"
+              >
+                ปิดหน้าต่างนี้
+              </button>
+              <button 
+                onClick={() => {
+                  sessionStorage.setItem('bossy_hide_popup_session', 'true');
+                  setShowPopupAlert(false);
+                }} 
+                className="text-xs text-gray-500 hover:underline mt-1"
+              >
+                ไม่ต้องแสดงป๊อปอัปนี้อีกในอุปกรณ์นี้
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {!showAdmin ? (
         <div className="space-y-4">
-          {/* แบนเนอร์ประกาศด้านบนหน้าเว็บ (ถ้าเปิดใช้งาน) */}
           {webConfig.showAnnouncement && (
             <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg flex justify-between items-center shadow-sm">
               <span>📢 <b>ประกาศ:</b> {webConfig.announcement}</span>
-              <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">ดูประกาศอีกครั้ง</button>
+              <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัปประกาศ</button>
             </div>
           )}
 
-          {/* 3. ปุ่มทำให้หน้าสินค้าว่างเปล่า */}
           {webConfig.isEmptyShop ? (
             <div className="bg-white p-12 rounded shadow text-center space-y-3">
               <p className="text-2xl font-bold text-gray-400">🛒</p>
@@ -255,7 +289,6 @@ function MainShopSystem({ showAdmin }) {
             </div>
           ) : (
             <>
-              {/* 2. ซ่อนหมวดหมู่สินค้า (มีรูปล็อคกุญแจ) */}
               {!webConfig.hideCategoriesOnly && !webConfig.hideProductsAndCategories && (
                 <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100 rounded">
                   <button 
@@ -279,7 +312,6 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               )}
 
-              {/* ซ่อนสินค้าทั้งหมด (กรณีเปิดล็อคซ่อมสินค้าทั้งหมด) */}
               {webConfig.hideProductsAndCategories ? (
                 <div className="bg-amber-50 border border-amber-300 p-8 rounded text-center text-amber-800 font-bold">
                   🔒 รายการสินค้าและหมวดหมู่ถูกปิดซ่อมแซมชั่วคราว
@@ -303,7 +335,6 @@ function MainShopSystem({ showAdmin }) {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* เมนูแท็บหลังบ้าน เพิ่ม "จัดการหน้าเว็บ" เข้าไป */}
           <div className="flex gap-2 flex-wrap">
             {['dashboard', 'stock', 'add', 'history', 'websetting'].map(tab => (
               <button 
@@ -316,36 +347,46 @@ function MainShopSystem({ showAdmin }) {
             ))}
           </div>
 
-          {/* เนื้อหาแท็บ: จัดการหน้าเว็บ (ตามที่คุณขอ 3 ข้อ) */}
           {activeTab === 'websetting' && (
             <div className="bg-white p-6 shadow rounded space-y-6 max-w-2xl">
-              <h2 className="text-xl font-bold border-b pb-2 text-blue-600">🛠️ ตั้งค่าและจัดการหน้าเว็บ</h2>
+              <h2 className="text-xl font-bold border-b pb-2 text-blue-600">🛠️ ตั้งค่าและจัดการหน้าเว็บ (ข้อมูลส่วนกลาง)</h2>
 
-              {/* ข้อ 1: กล่องข้อความแจ้งเตือน */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
-                <h3 className="font-bold text-gray-700">1. กล่องข้อความแจ้งเตือนหน้าเว็บ (Popup / Banner)</h3>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={webConfig.showAnnouncement} 
-                    onChange={e => setWebConfig({...webConfig, showAnnouncement: e.target.checked})}
-                    className="w-4 h-4"
-                  />
-                  <span>เปิดใช้งานกล่องข้อความแจ้งเตือนหน้าเว็บ</span>
-                </label>
+                <h3 className="font-bold text-gray-700">1. กล่องข้อความแจ้งเตือนหน้าเว็บ (Popup)</h3>
+                <div className="flex justify-between items-center">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={webConfig.showAnnouncement} 
+                      onChange={e => updateWebConfig({...webConfig, showAnnouncement: e.target.checked})}
+                      className="w-4 h-4"
+                    />
+                    <span>เปิดใช้งานกล่องข้อความแจ้งเตือนหน้าเว็บ</span>
+                  </label>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      sessionStorage.removeItem('bossy_hide_popup_session');
+                      setShowPopupAlert(true);
+                      alert("รีเซ็ตสถานะป๊อปอัปแล้ว");
+                    }} 
+                    className="text-xs bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+                  >
+                    🔄 รีเซ็ตการซ่อนป๊อปอัป
+                  </button>
+                </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">ข้อความประกาศ:</label>
                   <textarea 
                     className="w-full border p-2 rounded" 
                     rows="3"
                     value={webConfig.announcement}
-                    onChange={e => setWebConfig({...webConfig, announcement: e.target.value})}
+                    onChange={e => updateWebConfig({...webConfig, announcement: e.target.value})}
                     placeholder="พิมพ์ข้อความประกาศที่นี่..."
                   />
                 </div>
               </div>
 
-              {/* ข้อ 2: ปุ่มซ่อมสินค้าทั้งหมดและหมวดหมู่ (มีรูปล็อคกุญแจ) */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700 flex items-center gap-2">
                   <span>🔒</span> 2. ระบบซ่อมสินค้าและหมวดหมู่ (ล็อคกุญแจ)
@@ -355,7 +396,7 @@ function MainShopSystem({ showAdmin }) {
                     <input 
                       type="checkbox" 
                       checked={webConfig.hideProductsAndCategories} 
-                      onChange={e => setWebConfig({...webConfig, hideProductsAndCategories: e.target.checked})}
+                      onChange={e => updateWebConfig({...webConfig, hideProductsAndCategories: e.target.checked})}
                       className="w-4 h-4"
                     />
                     <span className="font-medium text-red-600">🔒 ล็อคและซ่อนสินค้าทั้งหมดหน้าเว็บ</span>
@@ -364,7 +405,7 @@ function MainShopSystem({ showAdmin }) {
                     <input 
                       type="checkbox" 
                       checked={webConfig.hideCategoriesOnly} 
-                      onChange={e => setWebConfig({...webConfig, hideCategoriesOnly: e.target.checked})}
+                      onChange={e => updateWebConfig({...webConfig, hideCategoriesOnly: e.target.checked})}
                       className="w-4 h-4"
                     />
                     <span className="font-medium">🔒 ซ่อนเฉพาะแถบหมวดหมู่สินค้าด้านบน</span>
@@ -372,14 +413,13 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               </div>
 
-              {/* ข้อ 3: ปุ่มทำให้หน้าสินค้าว่างเปล่า */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700">3. โหมดหน้าสินค้าว่างเปล่า (ปิดการแสดงผลสินค้าชั่วคราว)</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
                     type="checkbox" 
                     checked={webConfig.isEmptyShop} 
-                    onChange={e => setWebConfig({...webConfig, isEmptyShop: e.target.checked})}
+                    onChange={e => updateWebConfig({...webConfig, isEmptyShop: e.target.checked})}
                     className="w-4 h-4"
                   />
                   <span className="font-medium">เปิดใช้งานหน้าสินค้าว่างเปล่า</span>
@@ -390,13 +430,13 @@ function MainShopSystem({ showAdmin }) {
                     type="text" 
                     className="w-full border p-2 rounded" 
                     value={webConfig.emptyShopMessage}
-                    onChange={e => setWebConfig({...webConfig, emptyShopMessage: e.target.value})}
+                    onChange={e => updateWebConfig({...webConfig, emptyShopMessage: e.target.value})}
                   />
                 </div>
               </div>
 
               <div className="bg-green-100 text-green-800 p-3 rounded text-center font-bold text-sm">
-                ✅ บันทึกการตั้งค่าอัตโนมัติทันที สามารถสลับไปดูหน้าร้านเพื่อตรวจสอบผลลัพธ์ได้เลยครับ
+                ✅ บันทึกข้อมูลลงฐานข้อมูลกลางทันที ทุกเครื่องจะเห็นผลลัพธ์ตรงกัน
               </div>
             </div>
           )}
