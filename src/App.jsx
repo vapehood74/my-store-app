@@ -442,127 +442,217 @@ function MainShopSystem({ showAdmin }) {
           )}
 
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {['today', 'week', currentMonthName].map(d => {
-                  const { totalSales, totalProfit, totalQty } = calculateStats(d);
-                  return (
-                    <div key={d} className="bg-white p-4 shadow rounded border">
-                      <h3 className="font-bold text-gray-700">
-                        ยอด {d === 'today' ? "วันนี้" : d === 'week' ? "สัปดาห์นี้" : `เดือน${d}`}
-                      </h3>
-                      <p className="text-xl font-bold mt-1">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
-                      <p className="text-sm font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
-                      <p className="text-lg font-bold text-green-600">กำไร: {totalProfit.toLocaleString()} บ.</p>
-                    </div>
-                  );
-                })}
-              </div>
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {['today', 'week', currentMonthName].map(d => {
+        const { totalSales, totalProfit, totalQty } = calculateStats(d);
+        return (
+          <div key={d} className="bg-white p-4 shadow rounded border">
+            <h3 className="font-bold text-gray-700">
+              ยอด {d === 'today' ? "วันนี้" : d === 'week' ? "สัปดาห์นี้" : `เดือน${d}`}
+            </h3>
+            <p className="text-xl font-bold mt-1">ยอดขาย: {totalSales.toLocaleString()} บ.</p>
+            <p className="text-sm font-bold text-blue-600">ขายได้: {totalQty} ชิ้น</p>
+            <p className="text-lg font-bold text-green-600">กำไร: {totalProfit.toLocaleString()} บ.</p>
+          </div>
+        );
+      })}
+    </div>
 
-              <div className="border-t pt-4">
-                <h3 className="font-bold mb-3">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
-                
-                <div className="flex gap-2 mb-4 flex-wrap">
-                  <button onClick={() => setTimeRange('today')} className={`px-4 py-2 rounded ${timeRange === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>วันนี้</button>
-                  <button onClick={() => setTimeRange('week')} className={`px-4 py-2 rounded ${timeRange === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>สัปดาห์นี้</button>
-                  
-                  {getAvailableMonths().map(monthStr => (
-                    <button 
-                      key={monthStr} 
-                      onClick={() => setTimeRange(monthStr)} 
-                      className={`px-4 py-2 rounded ${timeRange === monthStr ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                    >
-                      {monthStr}
-                    </button>
-                  ))}
-                </div>
-                
-                <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
-                  <h2 className="text-2xl font-bold text-blue-800">
-                    สรุปข้อมูล: {timeRange === 'today' ? 'วันนี้' : timeRange === 'week' ? 'สัปดาห์นี้' : `เดือน${timeRange}`}
-                  </h2>
-                  <div className="flex flex-col md:flex-row gap-6 mt-4">
-                     <p className="text-lg">ยอดขายรวม: <span className="font-bold text-xl">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
-                     <p className="text-lg">ขายได้: <span className="font-bold text-xl text-blue-600">{calculateStats(timeRange).totalQty} ชิ้น</span></p>
-                     <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-xl text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+    <div className="border-t pt-4">
+      <h3 className="font-bold mb-3">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
+      
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <button onClick={() => setTimeRange('today')} className={`px-4 py-2 rounded ${timeRange === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>วันนี้</button>
+        <button onClick={() => setTimeRange('week')} className={`px-4 py-2 rounded ${timeRange === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>สัปดาห์นี้</button>
+        
+        {getAvailableMonths().map(monthStr => (
+          <button 
+            key={monthStr} 
+            onClick={() => setTimeRange(monthStr)} 
+            className={`px-4 py-2 rounded ${timeRange === monthStr ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+          >
+            {monthStr}
+          </button>
+        ))}
+      </div>
+      
+      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
+        <h2 className="text-2xl font-bold text-blue-800">
+          สรุปข้อมูล: {timeRange === 'today' ? 'วันนี้' : timeRange === 'week' ? 'สัปดาห์นี้' : `เดือน${timeRange}`}
+        </h2>
+        <div className="flex flex-col md:flex-row gap-6 mt-4">
+           <p className="text-lg">ยอดขายรวม: <span className="font-bold text-xl">{calculateStats(timeRange).totalSales.toLocaleString()} บาท</span></p>
+           <p className="text-lg">ขายได้: <span className="font-bold text-xl text-blue-600">{calculateStats(timeRange).totalQty} ชิ้น</span></p>
+           <p className="text-lg">กำไรสุทธิ: <span className="font-bold text-xl text-green-600">{calculateStats(timeRange).totalProfit.toLocaleString()} บาท</span></p>
+        </div>
+      </div>
 
-          {activeTab === 'stock' && (
-            <div className="space-y-6">
-              {categories.map((category) => {
-                const productsInCategory = products.filter(p => p.category === category);
-                if (productsInCategory.length === 0) return null;
+      {/* 📊 ส่วนเพิ่มใหม่: ตารางจัดอันดับสินค้าขายดีพร้อม Progress Bar ตามช่วงเวลาที่เลือก */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800">
+            🔥 สินค้าขายดีประจำช่วงเวลานี้
+          </h3>
+          <span className="text-sm text-gray-500">แสดงสูงสุด 5 อันดับ</span>
+        </div>
+
+        {(() => {
+          // กรองข้อมูลประวัติการขายตามช่วงเวลา (timeRange) ที่ผู้ใช้เลือก
+          const filteredSales = sales.filter(s => {
+            if (!s.sold_at) return false;
+            const saleDate = new Date(s.sold_at);
+            const now = new Date();
+
+            if (timeRange === 'today') {
+              return saleDate.toDateString() === now.toDateString();
+            } else if (timeRange === 'week') {
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(now.getDate() - 7);
+              return saleDate >= oneWeekAgo;
+            } else {
+              // กรณีเลือกเป็นเดือน เช่น "สิงหาคม 2569"
+              const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+              const mName = monthsThai[saleDate.getMonth()];
+              const yNum = saleDate.getFullYear() + 543;
+              const formattedMonth = `${mName} ${yNum}`;
+              return formattedMonth === timeRange;
+            }
+          });
+
+          // รวมจำนวนและยอดขายแยกตามชื่อสินค้า
+          const productSummary = {};
+          filteredSales.forEach(s => {
+            const name = s.product_name || 'สินค้าไม่ระบุชื่อ';
+            const qty = Number(s.quantity || 1);
+            const price = Number(s.sale_price || 0) * qty;
+
+            if (!productSummary[name]) {
+              productSummary[name] = { count: 0, total: 0 };
+            }
+            productSummary[name].count += qty;
+            productSummary[name].total += price;
+          });
+
+          // แปลงเป็น Array แล้วเรียงลำดับจากมากไปน้อย และตัดมาแค่ 5 อันดับแรก
+          const topProducts = Object.keys(productSummary)
+            .map(name => ({
+              name,
+              count: productSummary[name].count,
+              total: productSummary[name].total
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+          // หาจำนวนชิ้นสูงสุด เพื่อเอามาคำนวณความกว้างของหลอด Progress Bar (ให้หลอดอันดับ 1 ยาวเต็ม 100%)
+          const maxCount = topProducts.length > 0 ? topProducts[0].count : 1;
+
+          if (topProducts.length === 0) {
+            return (
+              <p className="text-gray-500 text-center py-6">ยังไม่มีประวัติการขายในช่วงเวลานี้</p>
+            );
+          }
+
+          return (
+            <div className="space-y-4">
+              {topProducts.map((item, index) => {
+                const percentage = Math.max((item.count / maxCount) * 100, 10); // อย่างน้อยให้เห็นหลอด 10%
+
                 return (
-                  <div key={category} className="bg-white p-4 shadow rounded">
-                    <h3 className="font-bold text-lg mb-3 border-b pb-2 text-blue-600">{category}</h3>
-                    {productsInCategory.map(p => (
-                      <div key={p.id} className="flex justify-between border-b p-3 items-center hover:bg-gray-50">
-                        <div>
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <input type="number" placeholder="เติม" className="w-16 border p-1 rounded text-center" 
-                            value={restockAmounts[p.id] || ''} onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} />
-                          <button onClick={() => handleRestock(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">เติม</button>
-                          <button onClick={() => handleSell(p)} className="bg-orange-500 text-white px-3 py-1 rounded text-sm">ขาย</button>
-                        </div>
-                      </div>
-                    ))}
+                  <div key={index} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-700">
+                        {index + 1}. {item.name}
+                      </span>
+                      <span className="text-gray-600 font-semibold">
+                        ขายได้ <span className="text-blue-600">{item.count}</span> ชิ้น ({item.total.toLocaleString()} บ.)
+                      </span>
+                    </div>
+                    {/* หลอดแสดงสัดส่วน Progress Bar */}
+                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          )}
+          );
+        })()}
+      </div>
+    </div>
+  </div>
+)}
 
-          {activeTab === 'add' && (
-            <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3 max-w-xl">
-              <input placeholder="ชื่อสินค้า" className="w-full border p-2" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-              <select className="w-full border p-2" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
-                <option value="">-- เลือกหมวดหมู่ --</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input placeholder="ราคาขาย" type="number" className="w-full border p-2" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
-              <input placeholder="ต้นทุน" type="number" className="w-full border p-2" value={newProduct.cost || ''} onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
-              <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
-              <input placeholder="URL รูป" className="w-full border p-2" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
-              <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
-            </form>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="bg-white p-4 shadow rounded space-y-4">
-              <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
-              {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
-                <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
-                  <div>
-                    <p className="font-bold">{s.product_name} <span className="text-blue-600 font-normal">({s.quantity || 1} ชิ้น)</span></p>
-                    <p className="text-gray-500">ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
-                  </div>
-                  <button onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs">ลบ</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {showDeleteModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white p-6 rounded shadow w-full max-w-sm">
-                <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
-                <input type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
-                  <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
-                </div>
+{activeTab === 'stock' && (
+  <div className="space-y-6">
+    {categories.map((category) => {
+      const productsInCategory = products.filter(p => p.category === category);
+      if (productsInCategory.length === 0) return null;
+      return (
+        <div key={category} className="bg-white p-4 shadow rounded">
+          <h3 className="font-bold text-lg mb-3 border-b pb-2 text-blue-600">{category}</h3>
+          {productsInCategory.map(p => (
+            <div key={p.id} className="flex justify-between border-b p-3 items-center hover:bg-gray-50">
+              <div>
+                <p className="font-medium">{p.name}</p>
+                <p className="text-sm text-gray-500">คงเหลือ: {p.stock_quantity}</p>
+              </div>
+              <div className="flex gap-2 items-center">
+                <input type="number" placeholder="เติม" className="w-16 border p-1 rounded text-center" 
+                  value={restockAmounts[p.id] || ''} onChange={(e) => setRestockAmounts({...restockAmounts, [p.id]: e.target.value})} />
+                <button onClick={() => handleRestock(p)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">เติม</button>
+                <button onClick={() => handleSell(p)} className="bg-orange-500 text-white px-3 py-1 rounded text-sm">ขาย</button>
               </div>
             </div>
-          )}
+          ))}
         </div>
-      )}
+      );
+    })}
+  </div>
+)}
+
+{activeTab === 'add' && (
+  <form onSubmit={handleAddProduct} className="bg-white p-6 shadow space-y-3 max-w-xl">
+    <input placeholder="ชื่อสินค้า" className="w-full border p-2" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+    <select className="w-full border p-2" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})}>
+      <option value="">-- เลือกหมวดหมู่ --</option>
+      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+    </select>
+    <input placeholder="ราคาขาย" type="number" className="w-full border p-2" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+    <input placeholder="ต้นทุน" type="number" className="w-full border p-2" value={newProduct.cost || ''} onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
+    <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
+    <input placeholder="URL รูป" className="w-full border p-2" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
+    <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
+  </form>
+)}
+
+{activeTab === 'history' && (
+  <div className="bg-white p-4 shadow rounded space-y-4">
+    <h3 className="font-bold text-lg">ประวัติการขายล่าสุด</h3>
+    {sales.sort((a, b) => new Date(b.sold_at) - new Date(a.sold_at)).map(s => (
+      <div key={s.id} className="border-b pb-2 flex justify-between items-center text-sm">
+        <div>
+          <p className="font-bold">{s.product_name} <span className="text-blue-600 font-normal">({s.quantity || 1} ชิ้น)</span></p>
+          <p className="text-gray-500">ขาย {s.sale_price} บ. | กำไร {s.sale_price - s.cost_price} บ.</p>
+        </div>
+        <button onClick={() => { setTargetDeleteId(s.id); setShowDeleteModal(true); }} className="bg-red-500 text-white px-3 py-1 rounded text-xs">ลบ</button>
+      </div>
+    ))}
+  </div>
+)}
+
+{showDeleteModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white p-6 rounded shadow w-full max-w-sm">
+      <h3 className="mb-4 font-bold">ยืนยันการลบ (รหัส 4 หลัก)</h3>
+      <input type="password" maxLength="4" className="border w-full p-2 mb-4 text-center text-xl" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <div className="flex gap-2">
+        <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
+        <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
+      </div>
     </div>
-  );
-}
+  </div>
+)}
