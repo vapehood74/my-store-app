@@ -65,7 +65,7 @@ function MainShopSystem({ showAdmin }) {
   const now = new Date();
   const currentMonthName = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
 
-  const categories = ["Singfiv 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k", "Marbo 25k", "Esko bar 20k", "Lambo 12k"];
+  const categories = ["Singfiv 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k","Vplus 16k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k", "Marbo 25k", "Esko bar 20k", "Lambo 12k"];
 
   useEffect(() => { 
     fetchData(); 
