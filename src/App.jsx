@@ -42,16 +42,19 @@ function MainShopSystem({ showAdmin }) {
   const [sales, setSales] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด');
+  const [searchQuery, setSearchQuery] = useState(''); // State สำหรับช่องค้นหากลิ่น/สินค้า
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState(null);
   const [password, setPassword] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
 
-  // ── State สำหรับตั้งค่าหน้าเว็บ (ดึงค่ากลางจาก Supabase) ──
+  // ── State สำหรับตั้งค่าหน้าเว็บ ──
   const [webConfig, setWebConfig] = useState({
     announcement: "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
     showAnnouncement: true,
+    showPopupAlert: true, // เพิ่มตัวเลือกเปิด-ปิดการเด้งป๊อปอัป
+    showSearchBox: true,  // เพิ่มตัวเลือกเปิด-ปิดช่องค้นหา
     hideProductsAndCategories: false, 
     hideCategoriesOnly: false,        
     emptyShopMessage: "ร้านค้าปิดปรับปรุงชั่วคราว หรือสินค้าหมดเกลี้ยง",
@@ -63,7 +66,7 @@ function MainShopSystem({ showAdmin }) {
   const now = new Date();
   const currentMonthName = now.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
 
-  const categories = ["Singfiv 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k","Vplus 16k","Relx Creator clear 18k", "Infy 20k", "M switch 15k", "Marbo 25k", "Esko bar 20k", "Lambo 12k"];
+  const categories = ["Singfiv 20k", "Marbo9000", "Marbo 10k", "Relx go smash 12k", "Relx novo 14k", "Relx Spartar 20k", "Relx Creator 20k", "Relx Creator clear 18k", "Infy 20k", "M switch 15k", "Marbo 25k", "Esko bar 20k", "Lambo 12k"];
 
   useEffect(() => { 
     fetchData(); 
@@ -77,20 +80,25 @@ function MainShopSystem({ showAdmin }) {
     setSales(s || []);
   }
 
-  // ดึงค่าการตั้งค่าเว็บจาก Supabase
   async function fetchWebConfig() {
     const { data, error } = await supabase.from('settings').select('*').eq('id', 1).single();
     if (data) {
-      setWebConfig(data);
-      // เช็คเงื่อนไขการเด้งป๊อปอัปเฉพาะเมื่อเปิดใช้งาน และเครื่องนี้ยังไม่ได้กดซ่อนป๊อปอัปนี้ไว้ใน Session นี้
+      // กำหนดค่าเริ่มต้นให้ตรงกับ field ใหม่หากข้อมูลใน DB เก่าไม่มี
+      const mergedConfig = {
+        showPopupAlert: true,
+        showSearchBox: true,
+        ...data
+      };
+      setWebConfig(mergedConfig);
+      
       const isHidden = sessionStorage.getItem('bossy_hide_popup_session');
-      if (data.showAnnouncement && !isHidden) {
+      // เด้งป๊อปอัปเฉพาะเมื่อเปิดประกาศ, เปิดสวิตช์ให้เด้งป๊อปอัป และ session นี้ยังไม่เคยปิด
+      if (mergedConfig.showAnnouncement && mergedConfig.showPopupAlert && !isHidden) {
         setShowPopupAlert(true);
       }
     }
   }
 
-  // บันทึกค่าการตั้งค่าเว็บลง Supabase (เพื่อให้ทุกเครื่องเห็นเหมือนกันหมด)
   async function updateWebConfig(newConfig) {
     setWebConfig(newConfig);
     const { error } = await supabase.from('settings').upsert({ id: 1, ...newConfig });
@@ -238,8 +246,8 @@ function MainShopSystem({ showAdmin }) {
 
   return (
     <div className="p-6 relative">
-      {/* 1. กล่องข้อความแจ้งเตือนหน้าเว็บ (Popup) ดึงค่ากลาง */}
-      {!showAdmin && webConfig.showAnnouncement && showPopupAlert && (
+      {/* 1. กล่องข้อความแจ้งเตือนหน้าเว็บแบบ Popup (ถ้าเปิดใช้งานและเปิดสวิตช์เด้งป๊อปอัป) */}
+      {!showAdmin && webConfig.showAnnouncement && webConfig.showPopupAlert && showPopupAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full text-center border-t-4 border-blue-600 relative">
             <button 
@@ -275,10 +283,13 @@ function MainShopSystem({ showAdmin }) {
 
       {!showAdmin ? (
         <div className="space-y-4">
+          {/* แสดงกล่องประกาศแบบข้อความปกติบนหน้าเว็บเสมอ (ถ้าเปิดใช้งาน) */}
           {webConfig.showAnnouncement && (
             <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg flex justify-between items-center shadow-sm">
               <span>📢 <b>ประกาศ:</b> {webConfig.announcement}</span>
-              <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัปประกาศ</button>
+              {webConfig.showPopupAlert && (
+                <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัปประกาศ</button>
+              )}
             </div>
           )}
 
@@ -289,6 +300,24 @@ function MainShopSystem({ showAdmin }) {
             </div>
           ) : (
             <>
+              {/* ช่องค้นหากลิ่น / ชื่อสินค้า (แสดงเฉพาะตอนเปิดใช้งาน) */}
+              {webConfig.showSearchBox && (
+                <div className="bg-white p-3 rounded-lg shadow-sm border flex items-center">
+                  <span className="text-gray-400 mr-2">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="ค้นหาชื่อสินค้า หรือ กลิ่น..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full outline-none text-gray-700 bg-transparent"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="text-xs bg-gray-200 px-2 py-1 rounded text-gray-600">ล้าง</button>
+                  )}
+                </div>
+              )}
+
+              {/* หมวดหมู่สินค้าด้านบน (ซ่อนได้ถ้าเปิดตั้งค่าซ่อนหมวดหมู่) */}
               {!webConfig.hideCategoriesOnly && !webConfig.hideProductsAndCategories && (
                 <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100 rounded">
                   <button 
@@ -319,7 +348,12 @@ function MainShopSystem({ showAdmin }) {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
                   {products
-                    .filter(p => p.stock_quantity > 0 && (selectedCategory === 'ทั้งหมด' || p.category === selectedCategory))
+                    .filter(p => {
+                      const matchStock = p.stock_quantity > 0;
+                      const matchCategory = selectedCategory === 'ทั้งหมด' || p.category === selectedCategory;
+                      const matchSearch = searchQuery.trim() === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+                      return matchStock && matchCategory && matchSearch;
+                    })
                     .map(p => (
                       <div key={p.id} className="bg-white p-4 rounded shadow border">
                         <img src={p.image_url} className="w-full h-32 object-cover mb-2 rounded" onError={(e) => e.target.style.display = 'none'} />
@@ -351,30 +385,29 @@ function MainShopSystem({ showAdmin }) {
             <div className="bg-white p-6 shadow rounded space-y-6 max-w-2xl">
               <h2 className="text-xl font-bold border-b pb-2 text-blue-600">🛠️ ตั้งค่าและจัดการหน้าเว็บ (ข้อมูลส่วนกลาง)</h2>
 
+              {/* 1. ตั้งค่าประกาศและป๊อปอัป */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
-                <h3 className="font-bold text-gray-700">1. กล่องข้อความแจ้งเตือนหน้าเว็บ (Popup)</h3>
-                <div className="flex justify-between items-center">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={webConfig.showAnnouncement} 
-                      onChange={e => updateWebConfig({...webConfig, showAnnouncement: e.target.checked})}
-                      className="w-4 h-4"
-                    />
-                    <span>เปิดใช้งานกล่องข้อความแจ้งเตือนหน้าเว็บ</span>
-                  </label>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      sessionStorage.removeItem('bossy_hide_popup_session');
-                      setShowPopupAlert(true);
-                      alert("รีเซ็ตสถานะป๊อปอัปแล้ว");
-                    }} 
-                    className="text-xs bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
-                  >
-                    🔄 รีเซ็ตการซ่อนป๊อปอัป
-                  </button>
-                </div>
+                <h3 className="font-bold text-gray-700">1. การจัดการประกาศและกล่องข้อความ</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={webConfig.showAnnouncement} 
+                    onChange={e => updateWebConfig({...webConfig, showAnnouncement: e.target.checked})}
+                    className="w-4 h-4"
+                  />
+                  <span>แสดงข้อความประกาศหน้าเว็บ</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer pl-6">
+                  <input 
+                    type="checkbox" 
+                    checked={webConfig.showPopupAlert} 
+                    onChange={e => updateWebConfig({...webConfig, showPopupAlert: e.target.checked})}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">เด้งเป็นป๊อปอัปอัตโนมัติเมื่อลูกค้าเข้าเว็บไซต์ครั้งแรก (หากไม่เลือก ติ๊กอันนี้ออก จะขึ้นแค่แถบประกาศด้านบนสุดอย่างเดียว ไม่เด้งกวนใจ)</span>
+                </label>
+
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">ข้อความประกาศ:</label>
                   <textarea 
@@ -387,9 +420,24 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               </div>
 
+              {/* 2. ตั้งค่าช่องค้นหา */}
+              <div className="p-4 bg-gray-50 rounded border space-y-3">
+                <h3 className="font-bold text-gray-700">2. ช่องค้นหาชื่อสินค้า / กลิ่น</h3>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={webConfig.showSearchBox} 
+                    onChange={e => updateWebConfig({...webConfig, showSearchBox: e.target.checked})}
+                    className="w-4 h-4"
+                  />
+                  <span>เปิดใช้งานช่องค้นหาหน้าเว็บไซต์</span>
+                </label>
+              </div>
+
+              {/* 3. ล็อคและซ่อนหมวดหมู่สินค้า */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                  <span>🔒</span> 2. ระบบซ่อมสินค้าและหมวดหมู่ (ล็อคกุญแจ)
+                  <span>🔒</span> 3. ซ่อนหรือล็อคหมวดหมู่สินค้าและหน้าเว็บ
                 </h3>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -408,13 +456,14 @@ function MainShopSystem({ showAdmin }) {
                       onChange={e => updateWebConfig({...webConfig, hideCategoriesOnly: e.target.checked})}
                       className="w-4 h-4"
                     />
-                    <span className="font-medium">🔒 ซ่อนเฉพาะแถบหมวดหมู่สินค้าด้านบน</span>
+                    <span className="font-medium">🔒 ซ่อนแถบหมวดหมู่สินค้าด้านบนหน้าเว็บ (แม้สินค้าจะมีของอยู่ก็จะไม่แสดงแถบหมวดหมู่)</span>
                   </label>
                 </div>
               </div>
 
+              {/* 4. โหมดหน้าสินค้าว่างเปล่า */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
-                <h3 className="font-bold text-gray-700">3. โหมดหน้าสินค้าว่างเปล่า (ปิดการแสดงผลสินค้าชั่วคราว)</h3>
+                <h3 className="font-bold text-gray-700">4. โหมดหน้าสินค้าว่างเปล่า (ปิดการแสดงผลสินค้าชั่วคราว)</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
                     type="checkbox" 
@@ -477,7 +526,6 @@ function MainShopSystem({ showAdmin }) {
                   ))}
                 </div>
                 
-                {/* 📊 ส่วนแสดง "หมวดหมู่สินค้าที่ขายดี" */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-gray-800">
@@ -607,7 +655,7 @@ function MainShopSystem({ showAdmin }) {
               </select>
               <input placeholder="ราคาขาย" type="number" className="w-full border p-2" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
               <input placeholder="ต้นทุน" type="number" className="w-full border p-2" value={newProduct.cost || ''} onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
-              <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
+              <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProperty, stock_quantity: e.target.value})} />
               <input placeholder="URL รูป" className="w-full border p-2" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
               <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
             </form>
