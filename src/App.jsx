@@ -42,19 +42,18 @@ function MainShopSystem({ showAdmin }) {
   const [sales, setSales] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด');
-  const [searchQuery, setSearchQuery] = useState(''); // State สำหรับช่องค้นหากลิ่น/สินค้า
+  const [searchQuery, setSearchQuery] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [targetDeleteId, setTargetDeleteId] = useState(null);
   const [password, setPassword] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
 
-  // ── State สำหรับตั้งค่าหน้าเว็บ ──
   const [webConfig, setWebConfig] = useState({
     announcement: "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
     showAnnouncement: true,
-    showPopupAlert: true, // เพิ่มตัวเลือกเปิด-ปิดการเด้งป๊อปอัป
-    showSearchBox: true,  // เพิ่มตัวเลือกเปิด-ปิดช่องค้นหา
+    showPopupAlert: true,
+    showSearchBox: true,
     hideProductsAndCategories: false, 
     hideCategoriesOnly: false,        
     emptyShopMessage: "ร้านค้าปิดปรับปรุงชั่วคราว หรือสินค้าหมดเกลี้ยง",
@@ -83,16 +82,19 @@ function MainShopSystem({ showAdmin }) {
   async function fetchWebConfig() {
     const { data, error } = await supabase.from('settings').select('*').eq('id', 1).single();
     if (data) {
-      // กำหนดค่าเริ่มต้นให้ตรงกับ field ใหม่หากข้อมูลใน DB เก่าไม่มี
       const mergedConfig = {
-        showPopupAlert: true,
-        showSearchBox: true,
-        ...data
+        announcement: data.announcement ?? "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
+        showAnnouncement: data.showAnnouncement ?? true,
+        showPopupAlert: data.showPopupAlert ?? true,
+        showSearchBox: data.showSearchBox ?? true,
+        hideProductsAndCategories: data.hideProductsAndCategories ?? false,
+        hideCategoriesOnly: data.hideCategoriesOnly ?? false,
+        emptyShopMessage: data.emptyShopMessage ?? "ร้านค้าปิดปรับปรุงชั่วคราว หรือสินค้าหมดเกลี้ยง",
+        isEmptyShop: data.isEmptyShop ?? false
       };
       setWebConfig(mergedConfig);
       
       const isHidden = sessionStorage.getItem('bossy_hide_popup_session');
-      // เด้งป๊อปอัปเฉพาะเมื่อเปิดประกาศ, เปิดสวิตช์ให้เด้งป๊อปอัป และ session นี้ยังไม่เคยปิด
       if (mergedConfig.showAnnouncement && mergedConfig.showPopupAlert && !isHidden) {
         setShowPopupAlert(true);
       }
@@ -104,6 +106,7 @@ function MainShopSystem({ showAdmin }) {
     const { error } = await supabase.from('settings').upsert({ id: 1, ...newConfig });
     if (error) {
       console.error("Error saving config:", error.message);
+      alert("บันทึกไม่สำเร็จ: " + error.message);
     }
   }
 
@@ -246,7 +249,6 @@ function MainShopSystem({ showAdmin }) {
 
   return (
     <div className="p-6 relative">
-      {/* 1. กล่องข้อความแจ้งเตือนหน้าเว็บแบบ Popup (ถ้าเปิดใช้งานและเปิดสวิตช์เด้งป๊อปอัป) */}
       {!showAdmin && webConfig.showAnnouncement && webConfig.showPopupAlert && showPopupAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full text-center border-t-4 border-blue-600 relative">
@@ -283,7 +285,6 @@ function MainShopSystem({ showAdmin }) {
 
       {!showAdmin ? (
         <div className="space-y-4">
-          {/* แสดงกล่องประกาศแบบข้อความปกติบนหน้าเว็บเสมอ (ถ้าเปิดใช้งาน) */}
           {webConfig.showAnnouncement && (
             <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg flex justify-between items-center shadow-sm">
               <span>📢 <b>ประกาศ:</b> {webConfig.announcement}</span>
@@ -300,7 +301,6 @@ function MainShopSystem({ showAdmin }) {
             </div>
           ) : (
             <>
-              {/* ช่องค้นหากลิ่น / ชื่อสินค้า (แสดงเฉพาะตอนเปิดใช้งาน) */}
               {webConfig.showSearchBox && (
                 <div className="bg-white p-3 rounded-lg shadow-sm border flex items-center">
                   <span className="text-gray-400 mr-2">🔍</span>
@@ -317,7 +317,6 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               )}
 
-              {/* หมวดหมู่สินค้าด้านบน (ซ่อนได้ถ้าเปิดตั้งค่าซ่อนหมวดหมู่) */}
               {!webConfig.hideCategoriesOnly && !webConfig.hideProductsAndCategories && (
                 <div className="flex gap-2 overflow-x-auto p-4 bg-gray-100 rounded">
                   <button 
@@ -385,7 +384,6 @@ function MainShopSystem({ showAdmin }) {
             <div className="bg-white p-6 shadow rounded space-y-6 max-w-2xl">
               <h2 className="text-xl font-bold border-b pb-2 text-blue-600">🛠️ ตั้งค่าและจัดการหน้าเว็บ (ข้อมูลส่วนกลาง)</h2>
 
-              {/* 1. ตั้งค่าประกาศและป๊อปอัป */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700">1. การจัดการประกาศและกล่องข้อความ</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -420,7 +418,6 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               </div>
 
-              {/* 2. ตั้งค่าช่องค้นหา */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700">2. ช่องค้นหาชื่อสินค้า / กลิ่น</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -434,7 +431,6 @@ function MainShopSystem({ showAdmin }) {
                 </label>
               </div>
 
-              {/* 3. ล็อคและซ่อนหมวดหมู่สินค้า */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700 flex items-center gap-2">
                   <span>🔒</span> 3. ซ่อนหรือล็อคหมวดหมู่สินค้าและหน้าเว็บ
@@ -461,7 +457,6 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               </div>
 
-              {/* 4. โหมดหน้าสินค้าว่างเปล่า */}
               <div className="p-4 bg-gray-50 rounded border space-y-3">
                 <h3 className="font-bold text-gray-700">4. โหมดหน้าสินค้าว่างเปล่า (ปิดการแสดงผลสินค้าชั่วคราว)</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -655,7 +650,7 @@ function MainShopSystem({ showAdmin }) {
               </select>
               <input placeholder="ราคาขาย" type="number" className="w-full border p-2" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
               <input placeholder="ต้นทุน" type="number" className="w-full border p-2" value={newProduct.cost || ''} onChange={e => setNewProduct({...newProduct, cost: e.target.value})} />
-              <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProperty, stock_quantity: e.target.value})} />
+              <input placeholder="สต็อก" type="number" className="w-full border p-2" value={newProduct.stock_quantity || ''} onChange={e => setNewProduct({...newProduct, stock_quantity: e.target.value})} />
               <input placeholder="URL รูป" className="w-full border p-2" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} />
               <button className="bg-blue-600 text-white p-2 w-full">บันทึกสินค้าใหม่</button>
             </form>
