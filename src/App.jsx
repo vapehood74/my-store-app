@@ -51,6 +51,12 @@ function MainShopSystem({ showAdmin }) {
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
 
+  // States สำหรับเพิ่มแคมเปญใหม่
+  const [newCampaign, setNewCampaign] = useState({ target_points: '', reward_description: '' });
+
+  // States สำหรับเพิ่มสมาชิกใหม่
+  const [newMember, setNewMember] = useState({ name: '', phone: '', points: 0 });
+
   // States สำหรับระบบเช็คแต้มหน้าบ้าน
   const [showPointModal, setShowPointModal] = useState(false);
   const [checkPhone, setCheckPhone] = useState('');
@@ -132,6 +138,61 @@ function MainShopSystem({ showAdmin }) {
     if (error) {
       console.error("Error saving config:", error.message);
       alert("บันทึกไม่สำเร็จ: " + error.message);
+    }
+  }
+
+  // ฟังก์ชันเพิ่มแคมเปญใหม่ผ่านหน้าเว็บ
+  async function handleAddCampaign(e) {
+    e.preventDefault();
+    const pts = parseInt(newCampaign.target_points);
+    if (isNaN(pts) || pts <= 0 || !newCampaign.reward_description.trim()) {
+      alert("กรุณากรอกจำนวนแต้มและรายละเอียดของรางวัลให้ถูกต้อง");
+      return;
+    }
+
+    const { error } = await supabase.from('campaigns').insert([{
+      target_points: pts,
+      reward_description: newCampaign.reward_description
+    }]);
+
+    if (error) {
+      alert("เพิ่มแคมเปญไม่สำเร็จ: " + error.message);
+    } else {
+      alert("เพิ่มแคมเปญสำเร็จ!");
+      setNewCampaign({ target_points: '', reward_description: '' });
+      fetchMembersAndCampaigns();
+    }
+  }
+
+  // ฟังก์ชันลบแคมเปญ
+  async function handleDeleteCampaign(id) {
+    if (confirm("คุณต้องการลบแคมเปญนี้ใช่หรือไม่?")) {
+      const { error } = await supabase.from('campaigns').delete().eq('id', id);
+      if (!error) fetchMembersAndCampaigns();
+    }
+  }
+
+  // ฟังก์ชันเพิ่มสมาชิกใหม่ผ่านหน้าเว็บ
+  async function handleAddMember(e) {
+    e.preventDefault();
+    if (!newMember.name.trim() || !newMember.phone.trim()) {
+      alert("กรุณากรอกชื่อและเบอร์โทรศัพท์ให้ครบถ้วน");
+      return;
+    }
+
+    const { error } = await supabase.from('members').insert([{
+      name: newMember.name,
+      phone: newMember.phone,
+      points: parseInt(newMember.points) || 0,
+      is_banned: false
+    }]);
+
+    if (error) {
+      alert("เพิ่มสมาชิกไม่สำเร็จ (เบอร์โทรอาจซ้ำ): " + error.message);
+    } else {
+      alert("เพิ่มสมาชิกสำเร็จ!");
+      setNewMember({ name: '', phone: '', points: 0 });
+      fetchMembersAndCampaigns();
     }
   }
 
@@ -318,17 +379,6 @@ function MainShopSystem({ showAdmin }) {
       alert("สินค้าหมด!");
     }
   }
-
-  const getAvailableMonths = () => {
-    const monthsSet = new Set();
-    sales.forEach(s => {
-      if (!s.sold_at) return;
-      const date = new Date(s.sold_at);
-      const monthName = date.toLocaleString('th-TH', { month: 'long', year: 'numeric' });
-      monthsSet.add(monthName);
-    });
-    return Array.from(monthsSet);
-  };
 
   const calculateStats = (range) => {
     const now = new Date();
@@ -658,16 +708,74 @@ function MainShopSystem({ showAdmin }) {
             <div className="bg-white p-6 shadow rounded space-y-6">
               <h2 className="text-xl font-bold text-blue-600 border-b pb-2">👥 ระบบจัดการสมาชิก แคมเปญ และแต้ม</h2>
               
-              <div className="bg-gray-50 p-4 rounded border space-y-3">
-                <h3 className="font-bold text-gray-700">🏆 แคมเปญของรางวัลสะสมแต้ม</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {campaigns.map(c => (
-                    <div key={c.id} className="bg-white p-3 rounded border shadow-sm">
-                      <p className="font-bold text-blue-600">สะสมครบ {c.target_points} แต้ม</p>
-                      <p className="text-sm text-gray-600">{c.reward_description}</p>
-                    </div>
-                  ))}
+              {/* ส่วนเพิ่มแคมเปญผ่านหน้าเว็บ */}
+              <div className="bg-blue-50 p-4 rounded border border-blue-200 space-y-3">
+                <h3 className="font-bold text-blue-800">➕ สร้าง/เพิ่มแคมเปญของรางวัลใหม่</h3>
+                <form onSubmit={handleAddCampaign} className="flex flex-col md:flex-row gap-2">
+                  <input 
+                    type="number" 
+                    placeholder="จำนวนแต้มเป้าหมาย (เช่น 10)" 
+                    className="border p-2 rounded w-full md:w-48"
+                    value={newCampaign.target_points}
+                    onChange={e => setNewCampaign({...newCampaign, target_points: e.target.value})}
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="รายละเอียดของรางวัล (เช่น รับฟรี 1 แท่ง)" 
+                    className="border p-2 rounded flex-1"
+                    value={newCampaign.reward_description}
+                    onChange={e => setNewCampaign({...newCampaign, reward_description: e.target.value})}
+                  />
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 whitespace-nowrap">
+                    เพิ่มแคมเปญ
+                  </button>
+                </form>
+
+                <div className="mt-3">
+                  <p className="text-sm font-bold text-gray-700 mb-2">รายการแคมเปญปัจจุบัน:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {campaigns.map(c => (
+                      <div key={c.id} className="bg-white p-3 rounded border shadow-sm flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-blue-600">สะสมครบ {c.target_points} แต้ม</p>
+                          <p className="text-sm text-gray-600">{c.reward_description}</p>
+                        </div>
+                        <button onClick={() => handleDeleteCampaign(c.id)} className="text-red-500 font-bold text-sm hover:underline">ลบ</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              </div>
+
+              {/* ส่วนเพิ่มสมาชิกใหม่ผ่านหน้าเว็บ */}
+              <div className="bg-emerald-50 p-4 rounded border border-emerald-200 space-y-3">
+                <h3 className="font-bold text-emerald-800">➕ เพิ่มรายชื่อสมาชิกใหม่</h3>
+                <form onSubmit={handleAddMember} className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="ชื่อสมาชิก" 
+                    className="border p-2 rounded"
+                    value={newMember.name}
+                    onChange={e => setNewMember({...newMember, name: e.target.value})}
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="เบอร์โทรศัพท์" 
+                    className="border p-2 rounded"
+                    value={newMember.phone}
+                    onChange={e => setNewMember({...newMember, phone: e.target.value})}
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="แต้มเริ่มต้น (ค่าเริ่มต้น 0)" 
+                    className="border p-2 rounded"
+                    value={newMember.points}
+                    onChange={e => setNewMember({...newMember, points: e.target.value})}
+                  />
+                  <button className="bg-emerald-600 text-white px-4 py-2 rounded font-bold hover:bg-emerald-700">
+                    บันทึกสมาชิกใหม่
+                  </button>
+                </form>
               </div>
 
               <div className="space-y-3">
