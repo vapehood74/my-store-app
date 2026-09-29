@@ -49,6 +49,21 @@ function MainShopSystem({ showAdmin }) {
   const [newProduct, setNewProduct] = useState({ name: '', price: 0, cost: 0, stock_quantity: 0, image_url: '', category: '' });
   const [restockAmounts, setRestockAmounts] = useState({});
 
+  // States สำหรับระบบเช็คแต้มหน้าบ้าน
+  const [showPointModal, setShowPointModal] = useState(false);
+  const [checkPhone, setCheckPhone] = useState('');
+  const [checkTime, setCheckTime] = useState('');
+  const [memberResult, setMemberResult] = useState(null);
+
+  // States สำหรับหลังบ้านจัดการสมาชิก
+  const [selectedMemberForAction, setSelectedMemberForAction] = useState(null);
+  const [pointActionType, setPointActionType] = useState('add'); // 'add' หรือ 'sub'
+  const [pointInput, setPointInput] = useState('');
+  const [pointReason, setPointReason] = useState('');
+  const [banReasonInput, setBanReasonInput] = useState('');
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [targetMemberId, setTargetMemberId] = useState(null);
+
   const [webConfig, setWebConfig] = useState({
     announcement: "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
     showAnnouncement: true,
@@ -108,6 +123,101 @@ function MainShopSystem({ showAdmin }) {
       console.error("Error saving config:", error.message);
       alert("บันทึกไม่สำเร็จ: " + error.message);
     }
+  }
+  // ฟังก์ชันเช็คแต้มหน้าบ้าน
+  async function handleCheckPoints(e) {
+    e.preventDefault();
+    if (!checkPhone || !checkTime) {
+      alert("กรุณากรอกเบอร์โทรและเวลาที่สั่งซื้อล่าสุดให้ครบถ้วน");
+      return;
+    }
+
+    // ค้นหาสมาชิกจากเบอร์โทรและเช็คเวลาใกล้เคียง (เทียบวันหรือข้อความ)
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('phone', checkPhone)
+      .single();
+
+    if (error || !data) {
+      alert("ไม่พบข้อมูลสมาชิกจากเบอร์โทรนี้ หรือข้อมูลเวลาไม่ตรงกัน");
+      setMemberResult(null);
+      return;
+    }
+
+    if (data.is_banned) {
+      alert(`บัญชีนี้ถูกระงับชั่วคราว เนื่องจาก: ${data.ban_reason || 'ไม่ระบุสาเหตุ'} กรุณาติดต่อหลังบ้าน`);
+      setMemberResult(null);
+      return;
+    }
+
+    setMemberResult(data);
+  }
+
+  // ฟังก์ชันเพิ่ม/ลดแต้มจากหลังบ้าน
+  async function handleModifyPoints(memberId) {
+    const pointsNum = parseInt(pointInput);
+    if (isNaN(pointsNum) || pointsNum <= 0) {
+      alert("กรุณากรอกจำนวนแต้มให้ถูกต้อง");
+      return;
+    }
+    if (!pointReason.trim()) {
+      alert("กรุณาระบุเหตุผลในการเพิ่ม/ลดแต้ม");
+      return;
+    }
+
+    const targetMember = members.find(m => m.id === memberId);
+    if (!targetMember) return;
+
+    let newPoints = pointActionType === 'add' ? targetMember.points + pointsNum : targetMember.points - pointsNum;
+    if (newPoints < 0) newPoints = 0;
+
+    const { error } = await supabase
+      .from('members')
+      .update({ points: newPoints })
+      .eq('id', memberId);
+
+    if (error) {
+      alert("เกิดข้อผิดพลาด: " + error.message);
+    } else {
+      await supabase.from('point_logs').insert({
+        phone: targetMember.phone,
+        points_changed: pointActionType === 'add' ? pointsNum : -pointsNum,
+        reason: pointReason
+      });
+      alert("อัปเดตแต้มสำเร็จ!");
+      setPointInput('');
+      setPointReason('');
+      setSelectedMemberForAction(null);
+      fetchMembersAndCampaigns();
+    }
+  }
+
+  // ฟังก์ชันแบนสมาชิก
+  async function handleBanMember(memberId) {
+    if (!banReasonInput.trim()) {
+      alert("กรุณาระบุเหตุผลในการแบน");
+      return;
+    }
+    const { error } = await supabase
+      .from('members')
+      .update({ is_banned: true, ban_reason: banReasonInput })
+      .eq('id', memberId);
+
+    if (error) {
+      alert("แบนไม่สำเร็จ: " + error.message);
+    } else {
+      alert("ระงับสมาชิกเรียบร้อยแล้ว");
+      setShowBanModal(false);
+      setBanReasonInput('');
+      setTargetMemberId(null);
+      fetchMembersAndCampaigns();
+    }
+  }
+
+  async function handleUnbanMember(memberId) {
+    await supabase.from('members').update({ is_banned: false, ban_reason: null }).eq('id', memberId);
+    fetchMembersAndCampaigns();
   }
 
   async function handleDeleteSale(id) {
@@ -246,7 +356,193 @@ function MainShopSystem({ showAdmin }) {
     });
     return { totalSales, totalProfit, totalQty };
   };
+  return (
+    <div className="p-6 relative">
+      {/* ปุ่มเปิดหน้าเช็คแต้มหน้าบ้าน */}
+      {!showAdmin && (
+        <div className="mb-4 flex justify-end">
+          <button 
+            onClick={() => setShowPointModal(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-emerald-700 flex items-center gap-2"
+          >
+            ⭐ เช็คแต้มสะสมสมาชิก
+          </button>
+        </div>
+      )}
 
+      {/* Modal เช็คแต้มหน้าบ้าน */}
+      {showPointModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full relative">
+            <button onClick={() => { setShowPointModal(false); setMemberResult(null); }} className="absolute top-3 right-3 text-gray-400 hover:text-black font-bold text-xl">&times;</button>
+            <h3 className="font-bold text-lg mb-4 text-emerald-600 text-center">⭐ ตรวจสอบแต้มสะสมสมาชิก</h3>
+            
+            <form onSubmit={handleCheckPoints} className="space-y-3 mb-4">
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">เบอร์มือถือ:</label>
+                <input type="text" placeholder="089xxxxxxx" className="w-full border p-2 rounded" value={checkPhone} onChange={e => setCheckPhone(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">วันที่สั่งซื้อล่าสุด (ตัวอย่าง: 2026-06-06 หรือระบุคร่าวๆ):</label>
+                <input type="text" placeholder="YYYY-MM-DD หรือข้อความยืนยัน" className="w-full border p-2 rounded" value={checkTime} onChange={e => setCheckTime(e.target.value)} />
+              </div>
+              <button className="w-full bg-emerald-600 text-white p-2 rounded font-bold hover:bg-emerald-700">ตรวจสอบข้อมูล</button>
+            </form>
+
+            {memberResult && (
+              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg space-y-2 text-sm">
+                <p><b>ชื่อสมาชิก:</b> {memberResult.name}</p>
+                <p><b>เบอร์โทร:</b> {memberResult.phone}</p>
+                <p className="text-lg font-bold text-emerald-700">แต้มสะสมปัจจุบัน: {memberResult.points} แต้ม</p>
+                
+                <div className="mt-3 border-t pt-2">
+                  <p className="font-bold text-gray-700 mb-1">🎁 ของรางวัลแคมเปญปัจจุบัน:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                    {campaigns.map(camp => (
+                      <li key={camp.id} className={memberResult.points >= camp.target_points ? "text-emerald-600 font-bold" : ""}>
+                        ครบ {camp.target_points} แต้ม: {camp.reward_description} {memberResult.points >= camp.target_points ? "✨ (มีสิทธิ์รับรางวัล)" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!showAdmin ? (
+        <div className="space-y-4">
+          {webConfig.showAnnouncement && (
+            <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg flex justify-between items-center shadow-sm">
+              <span>📢 <b>ประกาศ:</b> {webConfig.announcement}</span>
+              {webConfig.showPopupAlert && (
+                <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัป</button>
+              )}
+            </div>
+          )}
+          {/* ส่วนแสดงสินค้าปกติ */}
+          {webConfig.isEmptyShop ? (
+            <div className="bg-white p-12 rounded shadow text-center space-y-3">
+              <p className="text-lg font-bold text-gray-600">{webConfig.emptyShopMessage}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+              {products.filter(p => p.stock_quantity > 0).map(p => (
+                <div key={p.id} className="bg-white p-4 rounded shadow border">
+                  <img src={p.image_url} className="w-full h-32 object-cover mb-2 rounded" onError={(e) => e.target.style.display = 'none'} />
+                  <p className="font-bold">{p.name}</p>
+                  <p className="text-blue-600 font-bold">ราคา {p.price} บาท</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex gap-2 flex-wrap">
+            {['dashboard', 'stock', 'members', 'websetting'].map(tab => (
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)} 
+                className={`p-2 rounded font-bold ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+              >
+                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'members' ? '👥 จัดการสมาชิก & แต้ม' : '⚙️ จัดการหน้าเว็บ'}
+              </button>
+            ))}
+          </div>
+
+          {/* แท็บจัดการสมาชิกและแต้มหลังบ้าน */}
+          {activeTab === 'members' && (
+            <div className="bg-white p-6 shadow rounded space-y-6">
+              <h2 className="text-xl font-bold text-blue-600 border-b pb-2">👥 ระบบจัดการสมาชิก แคมเปญ และแต้ม</h2>
+              
+              {/* ตารางแสดงแคมเปญของรางวัล */}
+              <div className="bg-gray-50 p-4 rounded border space-y-3">
+                <h3 className="font-bold text-gray-700">🏆 แคมเปญของรางวัลสะสมแต้ม</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {campaigns.map(c => (
+                    <div key={c.id} className="bg-white p-3 rounded border shadow-sm">
+                      <p className="font-bold text-blue-600">สะสมครบ {c.target_points} แต้ม</p>
+                      <p className="text-sm text-gray-600">{c.reward_description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* รายชื่อสมาชิก */}
+              <div className="space-y-3">
+                <h3 className="font-bold text-gray-700">รายชื่อสมาชิกทั้งหมด</h3>
+                <div className="space-y-2">
+                  {members.map(m => (
+                    <div key={m.id} className="border p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white shadow-sm">
+                      <div>
+                        <p className="font-bold">{m.name} <span className="text-gray-500 font-normal">({m.phone})</span></p>
+                        <p className="text-sm text-emerald-600 font-bold">แต้มสะสม: {m.points} แต้ม</p>
+                        {m.is_banned && <p className="text-xs text-red-600 font-bold">⚠️ ถูกแบน: {m.ban_reason}</p>}
+                      </div>
+
+                      <div className="flex gap-2 items-center flex-wrap">
+                        <button onClick={() => setSelectedMemberForAction(selectedMemberForAction === m.id ? null : m.id)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
+                          {selectedMemberForAction === m.id ? 'ปิด' : 'จัดการแต้ม'}
+                        </button>
+                        {m.is_banned ? (
+                          <button onClick={() => handleUnbanMember(m.id)} className="bg-green-600 text-white px-3 py-1 rounded text-sm">ปลดแบน</button>
+                        ) : (
+                          <button onClick={() => { setTargetMemberId(m.id); setShowBanModal(true); }} className="bg-red-600 text-white px-3 py-1 rounded text-sm">แบนสมาชิก</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ฟอร์มเพิ่ม/ลดแต้มเฉพาะสมาชิกที่เลือก */}
+              {selectedMemberForAction && (
+                <div className="bg-blue-50 p-4 rounded border border-blue-200 space-y-3">
+                  <h4 className="font-bold text-blue-800">จัดการแต้มให้สมาชิก (ID: {selectedMemberForAction})</h4>
+                  <div className="flex gap-2">
+                    <select className="border p-2 rounded" value={pointActionType} onChange={e => setPointActionType(e.target.value)}>
+                      <option value="add">เพิ่มแต้ม (+)</option>
+                      <option value="sub">ลดแต้ม (-)</option>
+                    </select>
+                    <input type="number" placeholder="จำนวนแต้ม" className="border p-2 rounded w-32" value={pointInput} onChange={e => setPointInput(e.target.value)} />
+                  </div>
+                  <input type="text" placeholder="ระบุเหตุผลในการเพิ่ม/ลดแต้ม..." className="w-full border p-2 rounded" value={pointReason} onChange={e => setPointReason(e.target.value)} />
+                  <button onClick={() => handleModifyPoints(selectedMemberForAction)} className="bg-blue-600 text-white px-4 py-2 rounded font-bold">ยืนยันการบันทึกแต้ม</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'websetting' && (
+            <div className="bg-white p-6 shadow rounded space-y-4">
+              <h2 className="text-xl font-bold text-blue-600">⚙️ ตั้งค่าหน้าเว็บทั่วไป</h2>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={webConfig.showAnnouncement} onChange={e => updateWebConfig({...webConfig, showAnnouncement: e.target.checked})} />
+                <span>แสดงประกาศหน้าเว็บ</span>
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal แบนสมาชิก */}
+      {showBanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded shadow w-full max-w-sm space-y-3">
+            <h3 className="font-bold text-red-600">ระบุเหตุผลการแบนสมาชิก</h3>
+            <textarea className="border w-full p-2 rounded" rows="3" placeholder="ระบุสาเหตุ..." value={banReasonInput} onChange={e => setBanReasonInput(e.target.value)} />
+            <div className="flex gap-2">
+              <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowBanModal(false)}>ยกเลิก</button>
+              <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleBanMember(targetMemberId)}>ยืนยันแบน</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
   return (
     <div className="p-6 relative">
       {!showAdmin && webConfig.showAnnouncement && webConfig.showPopupAlert && showPopupAlert && (
