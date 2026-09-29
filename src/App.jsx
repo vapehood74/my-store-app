@@ -40,6 +40,8 @@ function MainShopSystem({ showAdmin }) {
   const [timeRange, setTimeRange] = useState('today');
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCategory, setSelectedCategory] = useState('ทั้งหมด');
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,7 +59,7 @@ function MainShopSystem({ showAdmin }) {
 
   // States สำหรับหลังบ้านจัดการสมาชิก
   const [selectedMemberForAction, setSelectedMemberForAction] = useState(null);
-  const [pointActionType, setPointActionType] = useState('add'); // 'add' หรือ 'sub'
+  const [pointActionType, setPointActionType] = useState('add'); 
   const [pointInput, setPointInput] = useState('');
   const [pointReason, setPointReason] = useState('');
   const [banReasonInput, setBanReasonInput] = useState('');
@@ -85,6 +87,7 @@ function MainShopSystem({ showAdmin }) {
   useEffect(() => { 
     fetchData(); 
     fetchWebConfig();
+    fetchMembersAndCampaigns();
   }, []);
 
   async function fetchData() {
@@ -94,8 +97,15 @@ function MainShopSystem({ showAdmin }) {
     setSales(s || []);
   }
 
+  async function fetchMembersAndCampaigns() {
+    const { data: mData } = await supabase.from('members').select('*');
+    const { data: cData } = await supabase.from('campaigns').select('*');
+    setMembers(mData || []);
+    setCampaigns(cData || []);
+  }
+
   async function fetchWebConfig() {
-    const { data, error } = await supabase.from('settings').select('*').eq('id', 1).single();
+    const { data } = await supabase.from('settings').select('*').eq('id', 1).single();
     if (data) {
       const mergedConfig = {
         announcement: data.announcement ?? "ยินดีต้อนรับสู่ร้าน Bossystock สินค้าพร้อมส่งเพียบ!",
@@ -124,6 +134,7 @@ function MainShopSystem({ showAdmin }) {
       alert("บันทึกไม่สำเร็จ: " + error.message);
     }
   }
+
   // ฟังก์ชันเช็คแต้มหน้าบ้าน
   async function handleCheckPoints(e) {
     e.preventDefault();
@@ -132,7 +143,6 @@ function MainShopSystem({ showAdmin }) {
       return;
     }
 
-    // ค้นหาสมาชิกจากเบอร์โทรและเช็คเวลาใกล้เคียง (เทียบวันหรือข้อความ)
     const { data, error } = await supabase
       .from('members')
       .select('*')
@@ -140,13 +150,13 @@ function MainShopSystem({ showAdmin }) {
       .single();
 
     if (error || !data) {
-      alert("ไม่พบข้อมูลสมาชิกจากเบอร์โทรนี้ หรือข้อมูลเวลาไม่ตรงกัน");
+      alert("ไม่พบข้อมูลสมาชิกจากเบอร์โทรนี้");
       setMemberResult(null);
       return;
     }
 
     if (data.is_banned) {
-      alert(`บัญชีนี้ถูกระงับชั่วคราว เนื่องจาก: ${data.ban_reason || 'ไม่ระบุสาเหตุ'} กรุณาติดต่อหลังบ้าน`);
+      alert(`บัญชีนี้ถูกระงับชั่วคราว เนื่องจาก: ${data.ban_reason || 'ไม่ระบุสาเหตุ'}`);
       setMemberResult(null);
       return;
     }
@@ -356,195 +366,10 @@ function MainShopSystem({ showAdmin }) {
     });
     return { totalSales, totalProfit, totalQty };
   };
+
   return (
     <div className="p-6 relative">
-      {/* ปุ่มเปิดหน้าเช็คแต้มหน้าบ้าน */}
-      {!showAdmin && (
-        <div className="mb-4 flex justify-end">
-          <button 
-            onClick={() => setShowPointModal(true)}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-emerald-700 flex items-center gap-2"
-          >
-            ⭐ เช็คแต้มสะสมสมาชิก
-          </button>
-        </div>
-      )}
-
-      {/* Modal เช็คแต้มหน้าบ้าน */}
-      {showPointModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full relative">
-            <button onClick={() => { setShowPointModal(false); setMemberResult(null); }} className="absolute top-3 right-3 text-gray-400 hover:text-black font-bold text-xl">&times;</button>
-            <h3 className="font-bold text-lg mb-4 text-emerald-600 text-center">⭐ ตรวจสอบแต้มสะสมสมาชิก</h3>
-            
-            <form onSubmit={handleCheckPoints} className="space-y-3 mb-4">
-              <div>
-                <label className="text-sm text-gray-600 block mb-1">เบอร์มือถือ:</label>
-                <input type="text" placeholder="089xxxxxxx" className="w-full border p-2 rounded" value={checkPhone} onChange={e => setCheckPhone(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 block mb-1">วันที่สั่งซื้อล่าสุด (ตัวอย่าง: 2026-06-06 หรือระบุคร่าวๆ):</label>
-                <input type="text" placeholder="YYYY-MM-DD หรือข้อความยืนยัน" className="w-full border p-2 rounded" value={checkTime} onChange={e => setCheckTime(e.target.value)} />
-              </div>
-              <button className="w-full bg-emerald-600 text-white p-2 rounded font-bold hover:bg-emerald-700">ตรวจสอบข้อมูล</button>
-            </form>
-
-            {memberResult && (
-              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg space-y-2 text-sm">
-                <p><b>ชื่อสมาชิก:</b> {memberResult.name}</p>
-                <p><b>เบอร์โทร:</b> {memberResult.phone}</p>
-                <p className="text-lg font-bold text-emerald-700">แต้มสะสมปัจจุบัน: {memberResult.points} แต้ม</p>
-                
-                <div className="mt-3 border-t pt-2">
-                  <p className="font-bold text-gray-700 mb-1">🎁 ของรางวัลแคมเปญปัจจุบัน:</p>
-                  <ul className="list-disc pl-5 space-y-1 text-gray-600">
-                    {campaigns.map(camp => (
-                      <li key={camp.id} className={memberResult.points >= camp.target_points ? "text-emerald-600 font-bold" : ""}>
-                        ครบ {camp.target_points} แต้ม: {camp.reward_description} {memberResult.points >= camp.target_points ? "✨ (มีสิทธิ์รับรางวัล)" : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!showAdmin ? (
-        <div className="space-y-4">
-          {webConfig.showAnnouncement && (
-            <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg flex justify-between items-center shadow-sm">
-              <span>📢 <b>ประกาศ:</b> {webConfig.announcement}</span>
-              {webConfig.showPopupAlert && (
-                <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัป</button>
-              )}
-            </div>
-          )}
-          {/* ส่วนแสดงสินค้าปกติ */}
-          {webConfig.isEmptyShop ? (
-            <div className="bg-white p-12 rounded shadow text-center space-y-3">
-              <p className="text-lg font-bold text-gray-600">{webConfig.emptyShopMessage}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
-              {products.filter(p => p.stock_quantity > 0).map(p => (
-                <div key={p.id} className="bg-white p-4 rounded shadow border">
-                  <img src={p.image_url} className="w-full h-32 object-cover mb-2 rounded" onError={(e) => e.target.style.display = 'none'} />
-                  <p className="font-bold">{p.name}</p>
-                  <p className="text-blue-600 font-bold">ราคา {p.price} บาท</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="flex gap-2 flex-wrap">
-            {['dashboard', 'stock', 'members', 'websetting'].map(tab => (
-              <button 
-                key={tab} 
-                onClick={() => setActiveTab(tab)} 
-                className={`p-2 rounded font-bold ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-              >
-                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'members' ? '👥 จัดการสมาชิก & แต้ม' : '⚙️ จัดการหน้าเว็บ'}
-              </button>
-            ))}
-          </div>
-
-          {/* แท็บจัดการสมาชิกและแต้มหลังบ้าน */}
-          {activeTab === 'members' && (
-            <div className="bg-white p-6 shadow rounded space-y-6">
-              <h2 className="text-xl font-bold text-blue-600 border-b pb-2">👥 ระบบจัดการสมาชิก แคมเปญ และแต้ม</h2>
-              
-              {/* ตารางแสดงแคมเปญของรางวัล */}
-              <div className="bg-gray-50 p-4 rounded border space-y-3">
-                <h3 className="font-bold text-gray-700">🏆 แคมเปญของรางวัลสะสมแต้ม</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {campaigns.map(c => (
-                    <div key={c.id} className="bg-white p-3 rounded border shadow-sm">
-                      <p className="font-bold text-blue-600">สะสมครบ {c.target_points} แต้ม</p>
-                      <p className="text-sm text-gray-600">{c.reward_description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* รายชื่อสมาชิก */}
-              <div className="space-y-3">
-                <h3 className="font-bold text-gray-700">รายชื่อสมาชิกทั้งหมด</h3>
-                <div className="space-y-2">
-                  {members.map(m => (
-                    <div key={m.id} className="border p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white shadow-sm">
-                      <div>
-                        <p className="font-bold">{m.name} <span className="text-gray-500 font-normal">({m.phone})</span></p>
-                        <p className="text-sm text-emerald-600 font-bold">แต้มสะสม: {m.points} แต้ม</p>
-                        {m.is_banned && <p className="text-xs text-red-600 font-bold">⚠️ ถูกแบน: {m.ban_reason}</p>}
-                      </div>
-
-                      <div className="flex gap-2 items-center flex-wrap">
-                        <button onClick={() => setSelectedMemberForAction(selectedMemberForAction === m.id ? null : m.id)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
-                          {selectedMemberForAction === m.id ? 'ปิด' : 'จัดการแต้ม'}
-                        </button>
-                        {m.is_banned ? (
-                          <button onClick={() => handleUnbanMember(m.id)} className="bg-green-600 text-white px-3 py-1 rounded text-sm">ปลดแบน</button>
-                        ) : (
-                          <button onClick={() => { setTargetMemberId(m.id); setShowBanModal(true); }} className="bg-red-600 text-white px-3 py-1 rounded text-sm">แบนสมาชิก</button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ฟอร์มเพิ่ม/ลดแต้มเฉพาะสมาชิกที่เลือก */}
-              {selectedMemberForAction && (
-                <div className="bg-blue-50 p-4 rounded border border-blue-200 space-y-3">
-                  <h4 className="font-bold text-blue-800">จัดการแต้มให้สมาชิก (ID: {selectedMemberForAction})</h4>
-                  <div className="flex gap-2">
-                    <select className="border p-2 rounded" value={pointActionType} onChange={e => setPointActionType(e.target.value)}>
-                      <option value="add">เพิ่มแต้ม (+)</option>
-                      <option value="sub">ลดแต้ม (-)</option>
-                    </select>
-                    <input type="number" placeholder="จำนวนแต้ม" className="border p-2 rounded w-32" value={pointInput} onChange={e => setPointInput(e.target.value)} />
-                  </div>
-                  <input type="text" placeholder="ระบุเหตุผลในการเพิ่ม/ลดแต้ม..." className="w-full border p-2 rounded" value={pointReason} onChange={e => setPointReason(e.target.value)} />
-                  <button onClick={() => handleModifyPoints(selectedMemberForAction)} className="bg-blue-600 text-white px-4 py-2 rounded font-bold">ยืนยันการบันทึกแต้ม</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'websetting' && (
-            <div className="bg-white p-6 shadow rounded space-y-4">
-              <h2 className="text-xl font-bold text-blue-600">⚙️ ตั้งค่าหน้าเว็บทั่วไป</h2>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={webConfig.showAnnouncement} onChange={e => updateWebConfig({...webConfig, showAnnouncement: e.target.checked})} />
-                <span>แสดงประกาศหน้าเว็บ</span>
-              </label>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Modal แบนสมาชิก */}
-      {showBanModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded shadow w-full max-w-sm space-y-3">
-            <h3 className="font-bold text-red-600">ระบุเหตุผลการแบนสมาชิก</h3>
-            <textarea className="border w-full p-2 rounded" rows="3" placeholder="ระบุสาเหตุ..." value={banReasonInput} onChange={e => setBanReasonInput(e.target.value)} />
-            <div className="flex gap-2">
-              <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowBanModal(false)}>ยกเลิก</button>
-              <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleBanMember(targetMemberId)}>ยืนยันแบน</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-  return (
-    <div className="p-6 relative">
+      {/* ป๊อปอัปประกาศหน้าแรก */}
       {!showAdmin && webConfig.showAnnouncement && webConfig.showPopupAlert && showPopupAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full text-center border-t-4 border-blue-600 relative">
@@ -579,13 +404,66 @@ function MainShopSystem({ showAdmin }) {
         </div>
       )}
 
+      {/* ปุ่มเปิดเช็คแต้มหน้าบ้าน */}
+      {!showAdmin && (
+        <div className="mb-4 flex justify-end">
+          <button 
+            onClick={() => setShowPointModal(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-emerald-700 flex items-center gap-2"
+          >
+            ⭐ เช็คแต้มสะสมสมาชิก
+          </button>
+        </div>
+      )}
+
+      {/* Modal เช็คแต้มหน้าบ้าน */}
+      {showPointModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full relative">
+            <button onClick={() => { setShowPointModal(false); setMemberResult(null); }} className="absolute top-3 right-3 text-gray-400 hover:text-black font-bold text-xl">&times;</button>
+            <h3 className="font-bold text-lg mb-4 text-emerald-600 text-center">⭐ ตรวจสอบแต้มสะสมสมาชิก</h3>
+            
+            <form onSubmit={handleCheckPoints} className="space-y-3 mb-4">
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">เบอร์มือถือ:</label>
+                <input type="text" placeholder="089xxxxxxx" className="w-full border p-2 rounded" value={checkPhone} onChange={e => setCheckPhone(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">วันที่สั่งซื้อล่าสุด (เช่น YYYY-MM-DD):</label>
+                <input type="text" placeholder="ระบุวันที่" className="w-full border p-2 rounded" value={checkTime} onChange={e => setCheckTime(e.target.value)} />
+              </div>
+              <button className="w-full bg-emerald-600 text-white p-2 rounded font-bold hover:bg-emerald-700">ตรวจสอบข้อมูล</button>
+            </form>
+
+            {memberResult && (
+              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg space-y-2 text-sm">
+                <p><b>ชื่อสมาชิก:</b> {memberResult.name}</p>
+                <p><b>เบอร์โทร:</b> {memberResult.phone}</p>
+                <p className="text-lg font-bold text-emerald-700">แต้มสะสมปัจจุบัน: {memberResult.points} แต้ม</p>
+                
+                <div className="mt-3 border-t pt-2">
+                  <p className="font-bold text-gray-700 mb-1">🎁 ของรางวัลแคมเปญปัจจุบัน:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                    {campaigns.map(camp => (
+                      <li key={camp.id} className={memberResult.points >= camp.target_points ? "text-emerald-600 font-bold" : ""}>
+                        ครบ {camp.target_points} แต้ม: {camp.reward_description} {memberResult.points >= camp.target_points ? "✨ (มีสิทธิ์รับรางวัล)" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {!showAdmin ? (
         <div className="space-y-4">
           {webConfig.showAnnouncement && (
             <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg flex justify-between items-center shadow-sm">
               <span>📢 <b>ประกาศ:</b> {webConfig.announcement}</span>
               {webConfig.showPopupAlert && (
-                <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัปประกาศ</button>
+                <button onClick={() => setShowPopupAlert(true)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">แสดงป๊อปอัป</button>
               )}
             </div>
           )}
@@ -665,13 +543,13 @@ function MainShopSystem({ showAdmin }) {
       ) : (
         <div className="space-y-6">
           <div className="flex gap-2 flex-wrap">
-            {['dashboard', 'stock', 'add', 'history', 'websetting'].map(tab => (
+            {['dashboard', 'stock', 'add', 'members', 'history', 'websetting'].map(tab => (
               <button 
                 key={tab} 
                 onClick={() => setActiveTab(tab)} 
                 className={`p-2 rounded font-bold ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
               >
-                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'add' ? 'เพิ่มสินค้า' : tab === 'history' ? 'ประวัติการขาย' : '⚙️ จัดการหน้าเว็บ'}
+                {tab === 'dashboard' ? 'Dashboard' : tab === 'stock' ? 'จัดการสต็อก' : tab === 'add' ? 'เพิ่มสินค้า' : tab === 'members' ? '👥 จัดการสมาชิก' : tab === 'history' ? 'ประวัติการขาย' : '⚙️ จัดการหน้าเว็บ'}
               </button>
             ))}
           </div>
@@ -699,7 +577,7 @@ function MainShopSystem({ showAdmin }) {
                     onChange={e => updateWebConfig({...webConfig, showPopupAlert: e.target.checked})}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700">เด้งเป็นป๊อปอัปอัตโนมัติเมื่อลูกค้าเข้าเว็บไซต์ครั้งแรก (หากไม่เลือก ติ๊กอันนี้ออก จะขึ้นแค่แถบประกาศด้านบนสุดอย่างเดียว ไม่เด้งกวนใจ)</span>
+                  <span className="text-sm text-gray-700">เด้งเป็นป๊อปอัปอัตโนมัติเมื่อลูกค้าเข้าเว็บไซต์ครั้งแรก</span>
                 </label>
 
                 <div>
@@ -709,7 +587,6 @@ function MainShopSystem({ showAdmin }) {
                     rows="3"
                     value={webConfig.announcement}
                     onChange={e => updateWebConfig({...webConfig, announcement: e.target.value})}
-                    placeholder="พิมพ์ข้อความประกาศที่นี่..."
                   />
                 </div>
               </div>
@@ -748,13 +625,13 @@ function MainShopSystem({ showAdmin }) {
                       onChange={e => updateWebConfig({...webConfig, hideCategoriesOnly: e.target.checked})}
                       className="w-4 h-4"
                     />
-                    <span className="font-medium">🔒 ซ่อนแถบหมวดหมู่สินค้าด้านบนหน้าเว็บ (แม้สินค้าจะมีของอยู่ก็จะไม่แสดงแถบหมวดหมู่)</span>
+                    <span className="font-medium">🔒 ซ่อนแถบหมวดหมู่สินค้าด้านบนหน้าเว็บ</span>
                   </label>
                 </div>
               </div>
 
               <div className="p-4 bg-gray-50 rounded border space-y-3">
-                <h3 className="font-bold text-gray-700">4. โหมดหน้าสินค้าว่างเปล่า (ปิดการแสดงผลสินค้าชั่วคราว)</h3>
+                <h3 className="font-bold text-gray-700">4. โหมดหน้าสินค้าว่างเปล่า</h3>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
                     type="checkbox" 
@@ -774,10 +651,65 @@ function MainShopSystem({ showAdmin }) {
                   />
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="bg-green-100 text-green-800 p-3 rounded text-center font-bold text-sm">
-                ✅ บันทึกข้อมูลลงฐานข้อมูลกลางทันที ทุกเครื่องจะเห็นผลลัพธ์ตรงกัน
+          {activeTab === 'members' && (
+            <div className="bg-white p-6 shadow rounded space-y-6">
+              <h2 className="text-xl font-bold text-blue-600 border-b pb-2">👥 ระบบจัดการสมาชิก แคมเปญ และแต้ม</h2>
+              
+              <div className="bg-gray-50 p-4 rounded border space-y-3">
+                <h3 className="font-bold text-gray-700">🏆 แคมเปญของรางวัลสะสมแต้ม</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {campaigns.map(c => (
+                    <div key={c.id} className="bg-white p-3 rounded border shadow-sm">
+                      <p className="font-bold text-blue-600">สะสมครบ {c.target_points} แต้ม</p>
+                      <p className="text-sm text-gray-600">{c.reward_description}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              <div className="space-y-3">
+                <h3 className="font-bold text-gray-700">รายชื่อสมาชิกทั้งหมด</h3>
+                <div className="space-y-2">
+                  {members.map(m => (
+                    <div key={m.id} className="border p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white shadow-sm">
+                      <div>
+                        <p className="font-bold">{m.name} <span className="text-gray-500 font-normal">({m.phone})</span></p>
+                        <p className="text-sm text-emerald-600 font-bold">แต้มสะสม: {m.points} แต้ม</p>
+                        {m.is_banned && <p className="text-xs text-red-600 font-bold">⚠️ ถูกแบน: {m.ban_reason}</p>}
+                      </div>
+
+                      <div className="flex gap-2 items-center flex-wrap">
+                        <button onClick={() => setSelectedMemberForAction(selectedMemberForAction === m.id ? null : m.id)} className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
+                          {selectedMemberForAction === m.id ? 'ปิด' : 'จัดการแต้ม'}
+                        </button>
+                        {m.is_banned ? (
+                          <button onClick={() => handleUnbanMember(m.id)} className="bg-green-600 text-white px-3 py-1 rounded text-sm">ปลดแบน</button>
+                        ) : (
+                          <button onClick={() => { setTargetMemberId(m.id); setShowBanModal(true); }} className="bg-red-600 text-white px-3 py-1 rounded text-sm">แบนสมาชิก</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedMemberForAction && (
+                <div className="bg-blue-50 p-4 rounded border border-blue-200 space-y-3">
+                  <h4 className="font-bold text-blue-800">จัดการแต้มให้สมาชิก</h4>
+                  <div className="flex gap-2">
+                    <select className="border p-2 rounded" value={pointActionType} onChange={e => setPointActionType(e.target.value)}>
+                      <option value="add">เพิ่มแต้ม (+)</option>
+                      <option value="sub">ลดแต้ม (-)</option>
+                    </select>
+                    <input type="number" placeholder="จำนวนแต้ม" className="border p-2 rounded w-32" value={pointInput} onChange={e => setPointInput(e.target.value)} />
+                  </div>
+                  <input type="text" placeholder="ระบุเหตุผลในการเพิ่ม/ลดแต้ม..." className="w-full border p-2 rounded" value={pointReason} onChange={e => setPointReason(e.target.value)} />
+                  <button onClick={() => handleModifyPoints(selectedMemberForAction)} className="bg-blue-600 text-white px-4 py-2 rounded font-bold">ยืนยันการบันทึกแต้ม</button>
+                </div>
+              )}
             </div>
           )}
 
@@ -797,114 +729,6 @@ function MainShopSystem({ showAdmin }) {
                     </div>
                   );
                 })}
-              </div>
-
-              <div className="border-t pt-4">
-                <h3 className="font-bold mb-3">เลือกช่วงเวลาเพื่อดูรายละเอียดเพิ่มเติม:</h3>
-                
-                <div className="flex gap-2 mb-4 flex-wrap">
-                  <button onClick={() => setTimeRange('today')} className={`px-4 py-2 rounded ${timeRange === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>วันนี้</button>
-                  <button onClick={() => setTimeRange('week')} className={`px-4 py-2 rounded ${timeRange === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>สัปดาห์นี้</button>
-                  
-                  {getAvailableMonths().map(monthStr => (
-                    <button 
-                      key={monthStr} 
-                      onClick={() => setTimeRange(monthStr)} 
-                      className={`px-4 py-2 rounded ${timeRange === monthStr ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                    >
-                      {monthStr}
-                    </button>
-                  ))}
-                </div>
-                
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">
-                      🏷️ หมวดหมู่สินค้าขายดีประจำช่วงเวลานี้
-                    </h3>
-                    <span className="text-sm text-gray-500">สรุปตามหมวดหมู่</span>
-                  </div>
-
-                  {(() => {
-                    const filteredSales = sales.filter(s => {
-                      if (!s.sold_at) return false;
-                      const saleDate = new Date(s.sold_at);
-                      const now = new Date();
-
-                      if (timeRange === 'today') {
-                        return saleDate.toDateString() === now.toDateString();
-                      } else if (timeRange === 'week') {
-                        const oneWeekAgo = new Date();
-                        oneWeekAgo.setDate(now.getDate() - 7);
-                        return saleDate >= oneWeekAgo;
-                      } else {
-                        const monthsThai = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-                        const mName = monthsThai[saleDate.getMonth()];
-                        const yNum = saleDate.getFullYear() + 543;
-                        const formattedMonth = `${mName} ${yNum}`;
-                        return formattedMonth === timeRange;
-                      }
-                    });
-
-                    const categorySummary = {};
-                    filteredSales.forEach(s => {
-                      const matchedProduct = products.find(p => p.id === s.product_id || p.name === s.product_name);
-                      const categoryName = matchedProduct ? matchedProduct.category : 'อื่นๆ';
-                      
-                      const qty = Number(s.quantity || 1);
-                      const price = Number(s.sale_price || 0) * qty;
-
-                      if (!categorySummary[categoryName]) {
-                        categorySummary[categoryName] = { count: 0, total: 0 };
-                      }
-                      categorySummary[categoryName].count += qty;
-                      categorySummary[categoryName].total += price;
-                    });
-
-                    const topCategories = Object.keys(categorySummary)
-                      .map(category => ({
-                        category,
-                        count: categorySummary[category].count,
-                        total: categorySummary[category].total
-                      }))
-                      .sort((a, b) => b.count - a.count);
-
-                    const maxCount = topCategories.length > 0 ? topCategories[0].count : 1;
-
-                    if (topCategories.length === 0) {
-                      return (
-                        <p className="text-gray-500 text-center py-6">ยังไม่มีประวัติการขายในช่วงเวลานี้</p>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-4">
-                        {topCategories.map((item, index) => {
-                          const percentage = Math.max((item.count / maxCount) * 100, 10);
-
-                          return (
-                            <div key={index} className="space-y-1">
-                              <div className="flex justify-between text-sm">
-                                <span className="font-medium text-gray-700">
-                                  {index + 1}. หมวดหมู่: <span className="text-blue-600 font-bold">{item.category}</span>
-                                </span>
-                                <span className="text-gray-600 font-semibold">
-                                  ขายได้ <span className="text-blue-600">{item.count}</span> ชิ้น ({item.total.toLocaleString()} บ.)
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                                <div
-                                  className="bg-emerald-600 h-3 rounded-full transition-all duration-500 ease-out"
-                                  style={{ width: `${percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </div>
               </div>
             </div>
           )}
@@ -977,6 +801,19 @@ function MainShopSystem({ showAdmin }) {
             <div className="flex gap-2">
               <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowDeleteModal(false)}>ยกเลิก</button>
               <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleDeleteSale(targetDeleteId)}>ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded shadow w-full max-w-sm space-y-3">
+            <h3 className="font-bold text-red-600">ระบุเหตุผลการแบนสมาชิก</h3>
+            <textarea className="border w-full p-2 rounded" rows="3" placeholder="ระบุสาเหตุ..." value={banReasonInput} onChange={e => setBanReasonInput(e.target.value)} />
+            <div className="flex gap-2">
+              <button className="flex-1 bg-gray-300 p-2 rounded" onClick={() => setShowBanModal(false)}>ยกเลิก</button>
+              <button className="flex-1 bg-red-600 text-white p-2 rounded" onClick={() => handleBanMember(targetMemberId)}>ยืนยันแบน</button>
             </div>
           </div>
         </div>
