@@ -37,7 +37,6 @@ export default function App() {
 }
 
 function MainShopSystem({ showAdmin }) {
-  const [timeRange, setTimeRange] = useState('today');
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [members, setMembers] = useState([]);
@@ -57,10 +56,9 @@ function MainShopSystem({ showAdmin }) {
   // States สำหรับเพิ่มสมาชิกใหม่
   const [newMember, setNewMember] = useState({ name: '', phone: '', points: 0 });
 
-  // States สำหรับระบบเช็คแต้มหน้าบ้าน
+  // States สำหรับระบบเช็คแต้มหน้าบ้าน (เอาเช็ควันที่ออกแล้ว)
   const [showPointModal, setShowPointModal] = useState(false);
   const [checkPhone, setCheckPhone] = useState('');
-  const [checkTime, setCheckTime] = useState('');
   const [memberResult, setMemberResult] = useState(null);
 
   // States สำหรับหลังบ้านจัดการสมาชิก
@@ -141,7 +139,6 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  // ฟังก์ชันเพิ่มแคมเปญใหม่ผ่านหน้าเว็บ
   async function handleAddCampaign(e) {
     e.preventDefault();
     const pts = parseInt(newCampaign.target_points);
@@ -164,7 +161,6 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  // ฟังก์ชันลบแคมเปญ
   async function handleDeleteCampaign(id) {
     if (confirm("คุณต้องการลบแคมเปญนี้ใช่หรือไม่?")) {
       const { error } = await supabase.from('campaigns').delete().eq('id', id);
@@ -172,7 +168,6 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  // ฟังก์ชันเพิ่มสมาชิกใหม่ผ่านหน้าเว็บ
   async function handleAddMember(e) {
     e.preventDefault();
     if (!newMember.name.trim() || !newMember.phone.trim()) {
@@ -196,11 +191,11 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  // ฟังก์ชันเช็คแต้มหน้าบ้าน
+  // ฟังก์ชันเช็คแต้มหน้าบ้าน (เช็คแค่เบอร์โทร)
   async function handleCheckPoints(e) {
     e.preventDefault();
-    if (!checkPhone || !checkTime) {
-      alert("กรุณากรอกเบอร์โทรและเวลาที่สั่งซื้อล่าสุดให้ครบถ้วน");
+    if (!checkPhone) {
+      alert("กรุณากรอกเบอร์โทรศัพท์มือถือ");
       return;
     }
 
@@ -225,7 +220,6 @@ function MainShopSystem({ showAdmin }) {
     setMemberResult(data);
   }
 
-  // ฟังก์ชันเพิ่ม/ลดแต้มจากหลังบ้าน
   async function handleModifyPoints(memberId) {
     const pointsNum = parseInt(pointInput);
     if (isNaN(pointsNum) || pointsNum <= 0) {
@@ -264,7 +258,6 @@ function MainShopSystem({ showAdmin }) {
     }
   }
 
-  // ฟังก์ชันแบนสมาชิก
   async function handleBanMember(memberId) {
     if (!banReasonInput.trim()) {
       alert("กรุณาระบุเหตุผลในการแบน");
@@ -466,7 +459,7 @@ function MainShopSystem({ showAdmin }) {
         </div>
       )}
 
-      {/* Modal เช็คแต้มหน้าบ้าน */}
+      {/* Modal เช็คแต้มหน้าบ้าน (เหลือแค่ช่องเบอร์มือถือ) */}
       {showPointModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full relative">
@@ -477,10 +470,6 @@ function MainShopSystem({ showAdmin }) {
               <div>
                 <label className="text-sm text-gray-600 block mb-1">เบอร์มือถือ:</label>
                 <input type="text" placeholder="089xxxxxxx" className="w-full border p-2 rounded" value={checkPhone} onChange={e => setCheckPhone(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 block mb-1">วันที่สั่งซื้อล่าสุด (เช่น YYYY-MM-DD):</label>
-                <input type="text" placeholder="ระบุวันที่" className="w-full border p-2 rounded" value={checkTime} onChange={e => setCheckTime(e.target.value)} />
               </div>
               <button className="w-full bg-emerald-600 text-white p-2 rounded font-bold hover:bg-emerald-700">ตรวจสอบข้อมูล</button>
             </form>
@@ -708,7 +697,6 @@ function MainShopSystem({ showAdmin }) {
             <div className="bg-white p-6 shadow rounded space-y-6">
               <h2 className="text-xl font-bold text-blue-600 border-b pb-2">👥 ระบบจัดการสมาชิก แคมเปญ และแต้ม</h2>
               
-              {/* ส่วนเพิ่มแคมเปญผ่านหน้าเว็บ */}
               <div className="bg-blue-50 p-4 rounded border border-blue-200 space-y-3">
                 <h3 className="font-bold text-blue-800">➕ สร้าง/เพิ่มแคมเปญของรางวัลใหม่</h3>
                 <form onSubmit={handleAddCampaign} className="flex flex-col md:flex-row gap-2">
@@ -747,7 +735,6 @@ function MainShopSystem({ showAdmin }) {
                 </div>
               </div>
 
-              {/* ส่วนเพิ่มสมาชิกใหม่ผ่านหน้าเว็บ */}
               <div className="bg-emerald-50 p-4 rounded border border-emerald-200 space-y-3">
                 <h3 className="font-bold text-emerald-800">➕ เพิ่มรายชื่อสมาชิกใหม่</h3>
                 <form onSubmit={handleAddMember} className="grid grid-cols-1 md:grid-cols-4 gap-2">
